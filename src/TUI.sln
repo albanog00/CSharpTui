@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34714.143
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TUI", "TUI\TUI.csproj", "{328DF02F-3F4F-41D9-9F77-AA144CADECDD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TUI.Core", "TUI.Core\TUI.Core.csproj", "{807746C4-034C-4640-9CAC-D1E02B74A8F1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{328DF02F-3F4F-41D9-9F77-AA144CADECDD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{328DF02F-3F4F-41D9-9F77-AA144CADECDD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{328DF02F-3F4F-41D9-9F77-AA144CADECDD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{328DF02F-3F4F-41D9-9F77-AA144CADECDD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{807746C4-034C-4640-9CAC-D1E02B74A8F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{807746C4-034C-4640-9CAC-D1E02B74A8F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{807746C4-034C-4640-9CAC-D1E02B74A8F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{807746C4-034C-4640-9CAC-D1E02B74A8F1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6BDA7996-BBC8-4F7A-9271-3283B77D4EE7}
+	EndGlobalSection
+EndGlobal
