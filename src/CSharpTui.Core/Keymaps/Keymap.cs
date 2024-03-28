@@ -1,4 +1,4 @@
-namespace TUI.Core.Keymaps;
+namespace CSharpTui.Core.Keymaps;
 
 public class Keymap
 {

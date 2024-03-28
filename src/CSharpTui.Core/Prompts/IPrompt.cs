@@ -1,4 +1,4 @@
-namespace TUI.Core.Prompts;
+namespace CSharpTui.Core.Prompts;
 
 public interface IPrompt<T> where T : notnull
 {

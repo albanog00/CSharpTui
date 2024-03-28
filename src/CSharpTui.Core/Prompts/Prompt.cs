@@ -1,6 +1,6 @@
-using TUI.Core.Keymaps;
+using CSharpTui.Core.Keymaps;
 
-namespace TUI.Core.Prompts;
+namespace CSharpTui.Core.Prompts;
 
 public abstract class Prompt<T> : IPrompt<T>
     where T : notnull

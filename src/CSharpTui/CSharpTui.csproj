@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\TUI.Core\TUI.Core.csproj" />
+    <ProjectReference Include="..\CSharpTui.Core\CSharpTui.Core.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

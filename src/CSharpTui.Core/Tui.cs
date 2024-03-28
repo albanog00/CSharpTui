@@ -1,4 +1,4 @@
-namespace TUI.Core;
+namespace CSharpTui.Core;
 
 public class Tui
 {
