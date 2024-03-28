@@ -3,19 +3,9 @@ namespace TUI.Core;
 public class Tui
 {
     private char[][] Buffer;
-
-    public int Width { get; private set; }
-    public int Height { get; private set; }
-    public string Title { get; private set; }
-
-    public int HelpHeight { get; set; }
-    public int PromptHeight { get; set; }
-
-    const char HorizontalChar = '-';
-    const char VerticalChar = '|';
-    const char EmptyChar = ' ';
-
-    const int InputPromptStartIndex = 3;
+    public int Width;
+    public int Height;
+    public string Title;
 
     public Tui(string title, int width = 80, int height = 24)
     {
@@ -28,18 +18,17 @@ public class Tui
         {
             Buffer[i] = new char[Width];
         }
-
-        HelpHeight = Height - 3;
-        PromptHeight = Height - 5;
     }
 
-    public Tui(string title)
-        : this(title, Console.WindowWidth, Console.WindowHeight - 2) { }
+    public Tui()
+        : this(string.Empty, Console.WindowWidth, Console.WindowHeight - 2) { }
 
     public Tui Draw()
     {
         Console.Clear();
-        DrawBorders();
+        UpdateBorders();
+        UpdateCorners();
+        UpdateTitle();
 
         for (int i = 0; i < Height; ++i)
         {
@@ -48,7 +37,7 @@ public class Tui
         return this;
     }
 
-    private void DrawBorders()
+    public void UpdateBorders()
     {
         for (int i = 0; i < Height; ++i)
         {
@@ -56,22 +45,29 @@ public class Tui
             {
                 if (i == 0 || i == Height - 1)
                 {
-                    Buffer[i][j] = HorizontalChar;
+                    Buffer[i][j] = Constants.HorizontalChar;
                 }
                 else if (j == 0 || j == Width - 1)
                 {
-                    Buffer[i][j] = VerticalChar;
+                    Buffer[i][j] = Constants.VerticalChar;
                 }
                 else
                 {
-                    Buffer[i][j] = EmptyChar;
+                    Buffer[i][j] = Constants.EmptyChar;
                 }
             }
         }
-        DrawTitle();
     }
 
-    private void DrawTitle()
+    public void UpdateCorners()
+    {
+        Buffer[0][0] = Constants.TopLeft;
+        Buffer[0][Width - 1] = Constants.TopRight;
+        Buffer[Height - 1][0] = Constants.BottomLeft;
+        Buffer[Height - 1][Width - 1] = Constants.BottomRight;
+    }
+
+    public void UpdateTitle()
     {
         int middleTop = Width / 2;
         int startIndex = middleTop - (Title.Length / 2);
@@ -83,65 +79,27 @@ public class Tui
         }
     }
 
-    private void DrawHelp()
-    {
-
-    }
-
-    private void UpdateLine(int line)
+    public void DrawLine(int line)
     {
         Console.SetCursorPosition(0, line);
         Console.WriteLine(Buffer[line]);
     }
 
-    private void UpdateCell(int y, int x)
+    public void DrawCell(int height, int x)
     {
-        Console.SetCursorPosition(x, y);
-        Console.Write(Buffer[y][x]);
+        Console.SetCursorPosition(x, height);
+        Console.Write(Buffer[height][x]);
     }
 
-    public string InputPrompt(string prompt)
+    public void UpdateCell(int height, int x, char value)
     {
-        string answer = string.Empty;
+        Buffer[height][x] = value;
+        DrawCell(height, x);
+    }
 
-        int promptXStartIndex = InputPromptStartIndex;
-        int promptXLastIndex = promptXStartIndex + prompt.Length;
-        for (int i = promptXStartIndex; i < promptXLastIndex; ++i)
-        {
-            Buffer[PromptHeight][i] = prompt[i - promptXStartIndex];
-        }
-
-        this.UpdateLine(PromptHeight);
-        int posX = promptXLastIndex + 1;
-
-        bool loop = true;
-        while (loop)
-        {
-            Console.SetCursorPosition(posX, PromptHeight);
-            var key = Console.ReadKey();
-
-            switch (key.Key)
-            {
-                case ConsoleKey.Enter or ConsoleKey.Escape:
-                    loop = false;
-                    break;
-                case ConsoleKey.Backspace:
-                    if (posX - 1 > promptXLastIndex)
-                    {
-                        answer = answer[0..(answer.Length - 1)];
-                        Buffer[PromptHeight][--posX] = ' ';
-                        this.UpdateCell(PromptHeight, posX);
-                    }
-                    break;
-                default:
-                    answer += key.KeyChar;
-                    Buffer[PromptHeight][posX++] = key.KeyChar;
-                    this.UpdateCell(PromptHeight, posX);
-                    break;
-            };
-        }
-
-        Console.Clear();
-        return new(answer.ToArray());
+    public void UpdateLine(int height, char[] value)
+    {
+        Buffer[height] = value;
+        DrawLine(height);
     }
 }

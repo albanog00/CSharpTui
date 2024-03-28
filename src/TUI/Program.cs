@@ -1,7 +1,8 @@
 ﻿using TUI.Core;
 
-var tui = new Tui("FileFinder");
-var value = tui.Draw()
-    .InputPrompt("Prompt");
+var inputPrompt = new InputPrompt();
+var value = inputPrompt
+    .SetTitle("FileFinder")
+    .Show("Does this works?");
 
 Console.WriteLine(value);
