@@ -4,16 +4,19 @@ public class Keymap
 {
     private ConsoleKey[] Keys { get; init; }
     private string Help { get; set; } = string.Empty;
-    private bool Disabled { get; set; }
+    private bool Disabled { get; set; } = false;
+    private bool IsControl { get; set; } = false;
 
-    private Keymap(ConsoleKey[] keys, bool disabled)
+    public Keymap() : this([]) { }
+
+
+    private Keymap(ConsoleKey[] keys)
     {
         Keys = keys;
-        Disabled = disabled;
     }
 
-    public static Keymap Bind(ConsoleKey[] keys, bool disabled) =>
-        new(keys, disabled);
+    public static Keymap Bind(ConsoleKey[] keys) =>
+        new(keys);
 
     public Keymap SetHelp(string key, string help)
     {
@@ -27,8 +30,15 @@ public class Keymap
         return this;
     }
 
-    public static bool Matches(IList<Keymap> keymaps, ConsoleKey key) =>
-        keymaps.Any(x => x.Keys.Any(k => k == key));
+    public Keymap SetIsControl(bool value)
+    {
+        IsControl = value;
+        return this;
+    }
+
+    public static bool Matches(Keymap keymap, ConsoleKeyInfo key) =>
+        keymap.Keys.Any(x => x == key.Key
+            && key.Modifiers.HasFlag(ConsoleModifiers.Control) == keymap.IsControl);
 
     public static string GetHelpString(IList<Keymap> keymaps)
     {

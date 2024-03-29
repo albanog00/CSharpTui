@@ -20,8 +20,8 @@ public class Tui
         }
     }
 
-    public Tui()
-        : this(string.Empty, Console.WindowWidth, Console.WindowHeight - 2) { }
+    public Tui(string title)
+        : this(title, Console.WindowWidth, Console.WindowHeight - 1) { }
 
     public Tui Draw()
     {
@@ -79,6 +79,18 @@ public class Tui
         }
     }
 
+    public void ResetTitle()
+    {
+        int middleTop = Width / 2;
+        int startIndex = middleTop - (Title.Length / 2);
+        int endIndex = startIndex + Title.Length;
+
+        for (int i = startIndex; i < endIndex; ++i)
+        {
+            Buffer[0][i] = Constants.HorizontalChar;
+        }
+    }
+
     public void DrawLine(int line)
     {
         Console.SetCursorPosition(0, line);
@@ -95,6 +107,14 @@ public class Tui
     {
         Buffer[height][x] = value;
         DrawCell(height, x);
+    }
+
+    public void UpdateRange(int height, int x, char[] value)
+    {
+        for (int i = 0; i < value.Length; ++i)
+        {
+            UpdateCell(height, x + i, value[i]);
+        }
     }
 
     public void UpdateLine(int height, char[] value)

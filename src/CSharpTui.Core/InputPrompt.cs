@@ -8,8 +8,12 @@ public class InputPrompt : Prompt<string>
     public int PromptHeight { get; set; }
     public int HelpHeight { get; set; }
 
-    public InputPrompt()
-        : base(new Tui())
+    public Keymap SendInput { get; private set; } = new();
+    public Keymap Delete { get; private set; } = new();
+    public Keymap Reset { get; private set; } = new();
+
+    public InputPrompt(string title)
+        : base(new Tui(title))
     {
         PromptHeight = GetHeight() - 5;
         HelpHeight = GetHeight() - 3;
@@ -17,64 +21,23 @@ public class InputPrompt : Prompt<string>
         Draw();
     }
 
+    public InputPrompt() : this(string.Empty) { }
+
     public override void Draw()
     {
         base.Draw();
         DrawHelp();
     }
 
-    public override string Show(string prompt)
-    {
-        string answer = string.Empty;
-        int posStartX = Constants.InputPromptStartIndex;
-        int posEndX = posStartX + prompt.Length;
-        for (int i = posStartX; i < posEndX; ++i)
-        {
-            UpdateCell(PromptHeight, i, prompt[i - posStartX]);
-        }
-
-        int posX = posEndX + 1;
-
-        bool loop = true;
-        while (loop)
-        {
-            Console.SetCursorPosition(posX, PromptHeight);
-
-            var key = Console.ReadKey(true);
-
-            switch (key.Key)
-            {
-                case ConsoleKey.Enter:
-                    loop = false;
-                    break;
-                case ConsoleKey.Backspace:
-                    if (posX - 1 > posEndX && answer.Length > 0)
-                    {
-                        answer = answer[0..(answer.Length - 1)];
-                        UpdateCell(PromptHeight, --posX, Constants.EmptyChar);
-                    }
-                    break;
-                default:
-                    answer += key.KeyChar;
-                    UpdateCell(PromptHeight, posX++, key.KeyChar);
-                    break;
-            };
-        }
-        Console.Clear();
-
-        return answer;
-    }
-
-    public override void InitializeKeymaps() =>
-        Keymaps = [
-            Keymap.Bind([ConsoleKey.Enter], false).SetHelp("Enter", "Send input"),
-            Keymap.Bind([ConsoleKey.Backspace], false)
-        ];
-
     public void DrawHelp()
     {
-        string help = Keymap.GetHelpString(Keymaps);
-        int startIndex = Constants.InputPromptStartIndex;
+        string help = Keymap.GetHelpString([
+                SendInput,
+                Delete,
+                Reset
+        ]);
+
+        int startIndex = Constants.PosXStartIndex;
         int endIndex = help.Length + startIndex;
 
         for (int i = startIndex; i < endIndex; ++i)
@@ -85,5 +48,72 @@ public class InputPrompt : Prompt<string>
             }
             UpdateCell(HelpHeight, i, help[i - startIndex]);
         }
+    }
+
+    public override void InitializeKeymaps()
+    {
+        SendInput = Keymap.Bind([ConsoleKey.Enter]).SetHelp("Enter", "Send Input");
+        Delete = Keymap.Bind([ConsoleKey.Backspace]);
+        Reset = Keymap.Bind([ConsoleKey.R]).SetIsControl(true).SetHelp("Ctrl-R", "Reset");
+    }
+
+    public override string? Show(string prompt)
+    {
+        string answer = string.Empty;
+        int posStartX = Constants.PosXStartIndex;
+        int posEndX = posStartX + prompt.Length;
+
+        UpdateRange(PromptHeight, posStartX, prompt);
+        int posX = posEndX + 1;
+
+        Console.SetCursorPosition(posX, PromptHeight);
+        bool loop = true;
+        while (loop)
+        {
+            Console.SetCursorPosition(posX, PromptHeight);
+            var key = Console.ReadKey(true);
+
+            if (Keymap.Matches(SendInput, key))
+            {
+                loop = false;
+                continue;
+            }
+
+            if (Keymap.Matches(Delete, key))
+            {
+                if (posX > posEndX && answer.Length > 0)
+                {
+                    answer = answer[0..(answer.Length - 1)];
+                    UpdateCell(PromptHeight, --posX, Constants.EmptyChar);
+                }
+                continue;
+            }
+
+            if (Keymap.Matches(Reset, key))
+            {
+                posX = posEndX + 1;
+                UpdateRange(PromptHeight, posEndX + 1,
+                    new string(Constants.EmptyChar, answer.Length + 1));
+                answer = string.Empty;
+
+                continue;
+            }
+
+            if (key.Modifiers != ConsoleModifiers.Control)
+            {
+                answer += key.KeyChar;
+                UpdateCell(PromptHeight, posX++, key.KeyChar);
+            }
+        }
+        DrawAnswer(answer);
+
+        return answer;
+    }
+
+    public void DrawAnswer(string answer)
+    {
+        answer = "Your answer is: " + answer;
+        UpdateRange(2, Constants.PosXStartIndex, answer);
+        Console.SetCursorPosition(0, GetHeight());
     }
 }

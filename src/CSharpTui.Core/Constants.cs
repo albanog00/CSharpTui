@@ -11,5 +11,5 @@ public static class Constants
     public const char BottomLeft = '└';
     public const char BottomRight = '┘';
 
-    public const int InputPromptStartIndex = 3;
+    public const int PosXStartIndex = 3;
 }
