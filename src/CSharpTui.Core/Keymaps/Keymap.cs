@@ -9,7 +9,6 @@ public class Keymap
 
     public Keymap() : this([]) { }
 
-
     private Keymap(ConsoleKey[] keys)
     {
         Keys = keys;

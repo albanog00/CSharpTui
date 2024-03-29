@@ -10,22 +10,22 @@ public class InputPrompt : Prompt<string>
 
     public Keymap SendInput { get; private set; } = new();
     public Keymap Delete { get; private set; } = new();
-    public Keymap Reset { get; private set; } = new();
+    public Keymap ResetInput { get; private set; } = new();
 
     public InputPrompt(string title)
         : base(new Tui(title))
     {
-        PromptHeight = GetHeight() - 5;
-        HelpHeight = GetHeight() - 3;
+        PromptHeight = Tui.Height - 5;
+        HelpHeight = Tui.Height - 3;
 
         Draw();
     }
 
     public InputPrompt() : this(string.Empty) { }
 
-    public override void Draw()
+    public void Draw()
     {
-        base.Draw();
+        Tui.Draw();
         DrawHelp();
     }
 
@@ -34,7 +34,7 @@ public class InputPrompt : Prompt<string>
         string help = Keymap.GetHelpString([
                 SendInput,
                 Delete,
-                Reset
+                ResetInput
         ]);
 
         int startIndex = Constants.PosXStartIndex;
@@ -42,11 +42,11 @@ public class InputPrompt : Prompt<string>
 
         for (int i = startIndex; i < endIndex; ++i)
         {
-            if (i >= GetWidth())
+            if (i >= Tui.Width)
             {
                 break;
             }
-            UpdateCell(HelpHeight, i, help[i - startIndex]);
+            Tui.UpdateCell(HelpHeight, i, help[i - startIndex]);
         }
     }
 
@@ -54,7 +54,7 @@ public class InputPrompt : Prompt<string>
     {
         SendInput = Keymap.Bind([ConsoleKey.Enter]).SetHelp("Enter", "Send Input");
         Delete = Keymap.Bind([ConsoleKey.Backspace]);
-        Reset = Keymap.Bind([ConsoleKey.R]).SetIsControl(true).SetHelp("Ctrl-R", "Reset");
+        ResetInput = Keymap.Bind([ConsoleKey.R]).SetIsControl(true).SetHelp("Ctrl-R", "Reset");
     }
 
     public override string? Show(string prompt)
@@ -63,7 +63,7 @@ public class InputPrompt : Prompt<string>
         int posStartX = Constants.PosXStartIndex;
         int posEndX = posStartX + prompt.Length;
 
-        UpdateRange(PromptHeight, posStartX, prompt);
+        Tui.UpdateRange(PromptHeight, posStartX, prompt);
         int posX = posEndX + 1;
 
         Console.SetCursorPosition(posX, PromptHeight);
@@ -84,15 +84,15 @@ public class InputPrompt : Prompt<string>
                 if (posX > posEndX && answer.Length > 0)
                 {
                     answer = answer[0..(answer.Length - 1)];
-                    UpdateCell(PromptHeight, --posX, Constants.EmptyChar);
+                    Tui.UpdateCell(PromptHeight, --posX, Constants.EmptyChar);
                 }
                 continue;
             }
 
-            if (Keymap.Matches(Reset, key))
+            if (Keymap.Matches(ResetInput, key))
             {
                 posX = posEndX + 1;
-                UpdateRange(PromptHeight, posEndX + 1,
+                Tui.UpdateRange(PromptHeight, posEndX + 1,
                     new string(Constants.EmptyChar, answer.Length + 1));
                 answer = string.Empty;
 
@@ -102,9 +102,10 @@ public class InputPrompt : Prompt<string>
             if (key.Modifiers != ConsoleModifiers.Control)
             {
                 answer += key.KeyChar;
-                UpdateCell(PromptHeight, posX++, key.KeyChar);
+                Tui.UpdateCell(PromptHeight, posX++, key.KeyChar);
             }
         }
+        Tui.Clear();
         DrawAnswer(answer);
 
         return answer;
@@ -113,7 +114,7 @@ public class InputPrompt : Prompt<string>
     public void DrawAnswer(string answer)
     {
         answer = "Your answer is: " + answer;
-        UpdateRange(2, Constants.PosXStartIndex, answer);
-        Console.SetCursorPosition(0, GetHeight());
+        Tui.UpdateRange(2, Constants.PosXStartIndex, answer);
+        Console.SetCursorPosition(0, Tui.Height);
     }
 }
