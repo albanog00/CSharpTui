@@ -1,4 +1,4 @@
-﻿using CSharpTui.Core;
+﻿using CSharpTui.Core.Prompts;
 
 var inputPrompt = new InputPrompt();
 var value = inputPrompt

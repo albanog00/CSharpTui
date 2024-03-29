@@ -1,7 +1,6 @@
 using CSharpTui.Core.Keymaps;
-using CSharpTui.Core.Prompts;
 
-namespace CSharpTui.Core;
+namespace CSharpTui.Core.Prompts;
 
 public class InputPrompt : Prompt<string>
 {
