@@ -133,7 +133,7 @@ public class Tui
 
     public Tui UpdateRange(int height, int x, char[] value)
     {
-        for (int i = 0; i < value.Length; ++i)
+        for (int i = 0; i < value.Length && i <= Width; ++i)
         {
             UpdateCell(height, x + i, value[i]);
         }

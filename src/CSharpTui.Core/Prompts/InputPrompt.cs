@@ -39,14 +39,7 @@ public class InputPrompt : Prompt<string>
         int startIndex = Constants.PosXStartIndex;
         int endIndex = help.Length + startIndex;
 
-        for (int i = startIndex; i < endIndex; ++i)
-        {
-            if (i >= Tui.Width)
-            {
-                break;
-            }
-            Tui.UpdateCell(HelpHeight, i, help[i - startIndex]);
-        }
+        Tui.UpdateRange(HelpHeight, Constants.PosXStartIndex, help);
     }
 
     public override void InitializeKeymaps()

@@ -36,7 +36,7 @@ public class Keymap
     }
 
     public static bool Matches(Keymap keymap, ConsoleKeyInfo key) =>
-        keymap.Keys.Any(x => x == key.Key
+        !keymap.Disabled && keymap.Keys.Any(x => x == key.Key
             && key.Modifiers.HasFlag(ConsoleModifiers.Control) == keymap.IsControl);
 
     public static string GetHelpString(IList<Keymap> keymaps)
