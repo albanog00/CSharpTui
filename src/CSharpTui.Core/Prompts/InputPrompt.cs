@@ -11,15 +11,15 @@ public class InputPrompt : Prompt<string>
     public Keymap Delete { get; private set; } = new();
     public Keymap ResetInput { get; private set; } = new();
 
-    public InputPrompt(string title)
-        : base(new Tui(title))
+    public InputPrompt(Tui tui) : base(tui)
     {
         PromptHeight = Tui.Height - 5;
         HelpHeight = Tui.Height - 3;
-
+        InitializeKeymaps();
         Draw();
     }
 
+    public InputPrompt(string title) : this(new Tui(title)) { }
     public InputPrompt() : this(string.Empty) { }
 
     public void Draw()
@@ -42,7 +42,7 @@ public class InputPrompt : Prompt<string>
         Tui.UpdateRange(HelpHeight, Constants.PosXStartIndex, help);
     }
 
-    public override void InitializeKeymaps()
+    public void InitializeKeymaps()
     {
         SendInput = Keymap.Bind([ConsoleKey.Enter]).SetHelp("Enter", "Send Input");
         Delete = Keymap.Bind([ConsoleKey.Backspace]);

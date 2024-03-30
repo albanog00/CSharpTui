@@ -10,13 +10,16 @@ public class SelectionPrompt<T> : Prompt<T>
     private Keymap SelectKey { get; set; } = new();
     private Keymap UpKey { get; set; } = new();
     private Keymap DownKey { get; set; } = new();
+    private int HelpHeight { get; set; }
 
-    public SelectionPrompt(Tui tui)
-        : base(tui)
+    public SelectionPrompt(Tui tui) : base(tui)
     {
-        Tui.Draw();
+        HelpHeight = Tui.Height - 3;
+        InitializeKeymaps();
+        Draw();
     }
 
+    public SelectionPrompt(string title) : this(new Tui(title)) { }
     public SelectionPrompt() : this(new Tui(string.Empty)) { }
 
     public SelectionPrompt<T> AddChoices(IList<T> choices)
@@ -27,6 +30,27 @@ public class SelectionPrompt<T> : Prompt<T>
         }
         return this;
     }
+
+    public void Draw()
+    {
+        Tui.Draw();
+        DrawHelp();
+    }
+
+    public void DrawHelp()
+    {
+        string help = Keymap.GetHelpString([
+                SelectKey,
+                UpKey,
+                DownKey,
+        ]);
+
+        int startIndex = Constants.PosXStartIndex;
+        int endIndex = help.Length + startIndex;
+
+        Tui.UpdateRange(HelpHeight, Constants.PosXStartIndex, help);
+    }
+
 
     public SelectionPrompt<T> AddChoice(T choice)
     {
@@ -40,11 +64,11 @@ public class SelectionPrompt<T> : Prompt<T>
         return this;
     }
 
-    public override void InitializeKeymaps()
+    public void InitializeKeymaps()
     {
         SelectKey = Keymap.Bind([ConsoleKey.Enter]).SetHelp("Enter", "Select");
-        UpKey = Keymap.Bind([ConsoleKey.UpArrow, ConsoleKey.K]).SetHelp("Up", "Go up");
-        DownKey = Keymap.Bind([ConsoleKey.DownArrow, ConsoleKey.J]).SetHelp("Down", "Go down");
+        UpKey = Keymap.Bind([ConsoleKey.UpArrow, ConsoleKey.K]).SetHelp("Up/j", "Go up");
+        DownKey = Keymap.Bind([ConsoleKey.DownArrow, ConsoleKey.J]).SetHelp("Down/k", "Go down");
     }
 
     public override T Show(string prompt)

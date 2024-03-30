@@ -8,11 +8,9 @@ public abstract class Prompt<T> : IPrompt<T>
     public Prompt(Tui tui)
     {
         Tui = tui;
-        InitializeKeymaps();
     }
 
     public abstract T Show(string prompt);
-    public virtual void InitializeKeymaps() { }
 
     public Prompt<T> SetTitle(string title)
     {
