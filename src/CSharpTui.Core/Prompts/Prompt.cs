@@ -11,8 +11,8 @@ public abstract class Prompt<T> : IPrompt<T>
         InitializeKeymaps();
     }
 
-    public abstract T? Show(string prompt);
-    public abstract void InitializeKeymaps();
+    public abstract T Show(string prompt);
+    public virtual void InitializeKeymaps() { }
 
     public Prompt<T> SetTitle(string title)
     {

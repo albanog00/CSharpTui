@@ -49,7 +49,7 @@ public class InputPrompt : Prompt<string>
         ResetInput = Keymap.Bind([ConsoleKey.R]).SetIsControl(true).SetHelp("Ctrl-R", "Reset");
     }
 
-    public override string? Show(string prompt)
+    public override string Show(string prompt)
     {
         string answer = string.Empty;
         int posStartX = Constants.PosXStartIndex;

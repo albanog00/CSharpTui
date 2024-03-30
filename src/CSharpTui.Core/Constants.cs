@@ -12,4 +12,5 @@ public static class Constants
     public const char BottomRight = '┘';
 
     public const int PosXStartIndex = 3;
+    public const int PosYStartIndex = 3;
 }
