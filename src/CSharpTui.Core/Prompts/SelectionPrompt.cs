@@ -5,7 +5,7 @@ namespace CSharpTui.Core.Prompts;
 public class SelectionPrompt<T> : Prompt<T>
     where T : notnull
 {
-    private Func<T, string> StringConverter { get; set; } = x => x.ToString();
+    private Func<T, string> StringConverter { get; set; } = x => x.ToString()!;
     private IList<T> Choices { get; set; } = [];
     private Keymap SelectKey { get; set; } = new();
     private Keymap UpKey { get; set; } = new();
@@ -49,30 +49,30 @@ public class SelectionPrompt<T> : Prompt<T>
     public override void InitializeKeymaps()
     {
         SelectKey = Keymap.Bind([ConsoleKey.Enter]).SetHelp("Enter", "Select");
-        UpKey = Keymap.Bind([ConsoleKey.UpArrow]).SetHelp("Up", "Go up");
-        DownKey = Keymap.Bind([ConsoleKey.DownArrow]).SetHelp("Down", "Go down");
+        UpKey = Keymap.Bind([ConsoleKey.UpArrow, ConsoleKey.K]).SetHelp("Up", "Go up");
+        DownKey = Keymap.Bind([ConsoleKey.DownArrow, ConsoleKey.J]).SetHelp("Down", "Go down");
     }
 
     public override T Show(string prompt)
     {
         object selected = new();
-
         int bufferIndex = Constants.PosYStartIndex + 2;
         int height = bufferIndex;
+        int posX = Constants.PosXStartIndex + 2;
+
         foreach (var choice in Choices)
         {
-            Tui.UpdateRange(height++, Constants.PosXStartIndex, StringConverter(choice));
+            Tui.UpdateRange(height++, posX, StringConverter(choice));
         }
-
         Tui.UpdateRange(Constants.PosYStartIndex, Constants.PosXStartIndex, prompt);
 
         int index = 0;
         bool loop = true;
 
-        Tui.UpdateCell(bufferIndex, 1, '>');
-        Console.SetCursorPosition(0, Tui.Height);
+        Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, '>');
         while (loop)
         {
+            Console.SetCursorPosition(0, Tui.Height);
             var key = Console.ReadKey(true);
 
             if (Keymap.Matches(SelectKey, key))
@@ -86,18 +86,32 @@ public class SelectionPrompt<T> : Prompt<T>
                 if (index > 0)
                 {
                     --index;
-                    Tui.UpdateCell(bufferIndex--, 1, Constants.EmptyChar);
-                    Tui.UpdateCell(bufferIndex, 1, '>');
+                    Tui.UpdateCell(bufferIndex--, Constants.PosXStartIndex, Constants.EmptyChar);
+                    Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, '>');
+                }
+                else
+                {
+                    Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, Constants.EmptyChar);
+                    bufferIndex += Choices.Count - 1;
+                    index = Choices.Count - 1;
+                    Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, '>');
                 }
             }
 
             if (Keymap.Matches(DownKey, key))
             {
-                if (index < Choices.Count)
+                if (index < Choices.Count - 1)
                 {
                     ++index;
-                    Tui.UpdateCell(bufferIndex++, 1, Constants.EmptyChar);
-                    Tui.UpdateCell(bufferIndex, 1, '>');
+                    Tui.UpdateCell(bufferIndex++, Constants.PosXStartIndex, Constants.EmptyChar);
+                    Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, '>');
+                }
+                else
+                {
+                    Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, Constants.EmptyChar);
+                    bufferIndex -= index;
+                    index = 0;
+                    Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, '>');
                 }
             }
         }

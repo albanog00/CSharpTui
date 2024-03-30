@@ -40,7 +40,7 @@ public class Tui
         return this;
     }
 
-    public Tui Clear()
+    public Tui Reset()
     {
         for (int i = 0; i < Height; ++i)
         {
@@ -50,6 +50,19 @@ public class Tui
             }
         }
         return Draw();
+    }
+
+    public Tui Clear()
+    {
+        Buffer = new char[Height][];
+        for (int i = 0; i < Height; ++i)
+        {
+            Buffer[i] = new char[Width];
+        }
+
+        Console.SetCursorPosition(0, 0);
+        Console.Clear();
+        return this;
     }
 
     public Tui DrawBorders()
