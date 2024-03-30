@@ -21,9 +21,9 @@ Func<int> displayChoiceNumber = countFunction();
 
 var selectionPrompt = new SelectionPrompt<string>();
 var value = selectionPrompt
-    .SetTitle("Selection")
     .AddChoices(choices)
     .SetConverter(x => $"{displayChoiceNumber()}. {x.ToLower()}")
+    .SetTitle("Selection")
     .Show("Pick a choice");
 
 Console.WriteLine(value);

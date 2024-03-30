@@ -19,12 +19,6 @@ public class SelectionPrompt<T> : Prompt<T>
 
     public SelectionPrompt() : this(new Tui(string.Empty)) { }
 
-    public new SelectionPrompt<T> SetTitle(string title)
-    {
-        base.SetTitle(title);
-        return this;
-    }
-
     public SelectionPrompt<T> AddChoices(IList<T> choices)
     {
         foreach (var choice in choices)
