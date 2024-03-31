@@ -27,8 +27,12 @@ public class Tui
     public Tui(string title)
         : this(title, Console.WindowWidth, Console.WindowHeight - 1) { }
 
+    public Tui(int width, int height)
+        : this(string.Empty, width, height) { }
+
     public Tui Draw()
     {
+        Console.Clear();
         this.DrawBorders()
             .DrawTitle();
 

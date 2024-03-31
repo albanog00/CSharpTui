@@ -51,7 +51,6 @@ public class SelectionPrompt<T> : Prompt<T>
         Tui.UpdateRange(HelpHeight, Constants.PosXStartIndex, help);
     }
 
-
     public SelectionPrompt<T> AddChoice(T choice)
     {
         Choices.Add(choice);
@@ -67,8 +66,8 @@ public class SelectionPrompt<T> : Prompt<T>
     public void InitializeKeymaps()
     {
         SelectKey = Keymap.Bind([ConsoleKey.Enter]).SetHelp("Enter", "Select");
-        UpKey = Keymap.Bind([ConsoleKey.UpArrow, ConsoleKey.K]).SetHelp("Up/j", "Go up");
-        DownKey = Keymap.Bind([ConsoleKey.DownArrow, ConsoleKey.J]).SetHelp("Down/k", "Go down");
+        UpKey = Keymap.Bind([ConsoleKey.UpArrow, ConsoleKey.K]).SetHelp("Up/k", "Go up");
+        DownKey = Keymap.Bind([ConsoleKey.DownArrow, ConsoleKey.J]).SetHelp("Down/j", "Go down");
     }
 
     public override T Show(string prompt)
