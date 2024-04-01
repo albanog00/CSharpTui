@@ -31,30 +31,14 @@ public class Tui
         return this;
     }
 
-    public Tui DrawRange(int startHeight, int endHeight)
-    {
-        Console.SetCursorPosition(0, startHeight);
-
-        for (int i = startHeight; i < endHeight; ++i)
-        {
-            for (int j = 0; j < Width; ++i)
-            {
-                Console.WriteLine(Buffer[i][j]);
-            }
-        }
-        return this;
-    }
-
     public Tui ResetRange(int startHeight, int endHeight)
     {
         for (int i = startHeight; i < endHeight; ++i)
         {
-            for (int j = 0; j < Width; ++j)
-            {
-                Buffer[i][j] = Constants.EmptyChar;
-            }
+            Buffer[i] = new char[Width];
+            DrawLine(i);
         }
-        return this.DrawRange(startHeight, endHeight);
+        return this;
     }
 
     public Tui Clear()
@@ -72,6 +56,9 @@ public class Tui
 
     public Tui DrawLine(int line)
     {
+        Console.SetCursorPosition(0, line);
+        Console.Write(new string(' ', Width));
+
         Console.SetCursorPosition(0, line);
         Console.WriteLine(Buffer[line]);
         return this;
@@ -108,13 +95,24 @@ public class Tui
     public Tui UpdateLineRange(int height, string value, int padding = 0) =>
         UpdateLineRange(height, value.ToCharArray(), padding);
 
-    public Tui UpdateLine(int height, char[] value)
+    public Tui UpdateLine(int height, char[] value, int padding = 0)
     {
-        Buffer[height] = value;
+        char[] line = new char[value.Length + padding];
+
+        for (int i = 0; i < padding; ++i)
+        {
+            line[i] = ' ';
+        }
+        for (int i = 0; i < value.Length; ++i)
+        {
+            line[padding + i] = value[i];
+        }
+
+        Buffer[height] = line;
         DrawLine(height);
         return this;
     }
 
-    public Tui UpdateLine(int height, string value) =>
-        UpdateLine(height, value.ToCharArray());
+    public Tui UpdateLine(int height, string value, int padding = 0) =>
+        UpdateLine(height, value.ToCharArray(), padding);
 }

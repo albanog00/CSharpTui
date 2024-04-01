@@ -7,13 +7,14 @@ public class SelectionPrompt<T> : Prompt<T>
 {
     private IList<T> Choices { get; set; } = [];
     private Func<T, string> StringConverter { get; set; } = x => x.ToString()!;
-    private IList<KeyValuePair<int, string>> ConvertedChoice = [];
+    private IList<KeyValuePair<int, string>> ConvertedChoices = [];
+    private IList<KeyValuePair<int, string>> SearchResultChoices = [];
     private string SearchString { get; set; } = string.Empty;
 
     private Keymap SelectKey { get; set; } = new();
     private Keymap UpKey { get; set; } = new();
     private Keymap DownKey { get; set; } = new();
-    private Keymap Search { get; set; } = new();
+    private Keymap SearchKey { get; set; } = new();
     private Keymap StopSearch { get; set; } = new();
     private Keymap Delete { get; set; } = new();
 
@@ -22,15 +23,16 @@ public class SelectionPrompt<T> : Prompt<T>
     private int ListStartIndex { get; set; }
     private int ListMaxIndex { get; set; }
     private int SearchIndex { get; set; }
+    private int PerPage { get; set; } = 20;
 
     public SelectionPrompt(Tui tui) : base(tui)
     {
         HeaderIndex = Constants.PosYStartIndex;
-        HelpIndex = Tui.Height - 4;
 
         ListStartIndex = HeaderIndex + 2;
-        ListMaxIndex = HelpIndex - 2;
+        ListMaxIndex = ListStartIndex + PerPage;
 
+        HelpIndex = ListMaxIndex + 2;
         SearchIndex = HelpIndex + 2;
 
         InitializeKeymaps();
@@ -51,6 +53,7 @@ public class SelectionPrompt<T> : Prompt<T>
     public void Draw()
     {
         Tui.Draw();
+        Search();
         DrawHelp();
     }
 
@@ -60,10 +63,10 @@ public class SelectionPrompt<T> : Prompt<T>
                 SelectKey,
                 UpKey,
                 DownKey,
-                Search,
+                SearchKey,
                 StopSearch,
         ]);
-        Tui.UpdateLineRange(HelpIndex, help, Constants.PosXStartIndex);
+        Tui.UpdateLine(HelpIndex, help, Constants.PosXStartIndex);
     }
 
     public SelectionPrompt<T> AddChoice(T choice)
@@ -89,50 +92,59 @@ public class SelectionPrompt<T> : Prompt<T>
         SelectKey = Keymap.Bind([ConsoleKey.Enter]).SetHelp("Enter", "Select");
         UpKey = Keymap.Bind([ConsoleKey.UpArrow, ConsoleKey.K]).SetHelp("Up/k", "Go up");
         DownKey = Keymap.Bind([ConsoleKey.DownArrow, ConsoleKey.J]).SetHelp("Down/j", "Go down");
-        Search = Keymap.Bind([ConsoleKey.Q]).SetIsControl(true).SetHelp("Ctrl-q", "Start Search");
+        SearchKey = Keymap.Bind([ConsoleKey.Q]).SetIsControl(true).SetHelp("Ctrl-q", "Start Search");
         StopSearch = Keymap.Bind([ConsoleKey.Escape]).SetHelp("Esc", "Stop Search").SetDisabled(true);
         Delete = Keymap.Bind([ConsoleKey.Backspace]);
     }
 
-    public IList<KeyValuePair<int, string>> UpdateSearch(int currentlyShowedItems = 0)
+    public void ConvertChoices()
     {
-        int maxIndex = Choices.Count + ListStartIndex > ListMaxIndex
-            ? ListMaxIndex
-            : ListStartIndex + currentlyShowedItems;
+        for (int i = 0; i < Choices.Count; ++i)
+        {
+            var convertedString = StringConverter(Choices[i]);
+            if (i + ListStartIndex < ListMaxIndex)
+            {
+                Tui.UpdateLine(i + ListStartIndex,
+                        convertedString, Constants.PosXStartIndex + 2);
+            }
+            ConvertedChoices.Add(new(i, convertedString));
+        }
+    }
 
-        Tui.ResetRange(ListStartIndex, maxIndex);
-
+    public void Search()
+    {
+        int currentSize = SearchResultChoices.Count;
         int height = ListStartIndex;
+        int maxIndex = Math.Min(currentSize, ListMaxIndex) + height;
         int posX = Constants.PosXStartIndex + 2;
 
-        IList<KeyValuePair<int, string>> items = [];
-        foreach (var choice in ConvertedChoice)
+        SearchResultChoices = [];
+        Tui.ResetRange(height, maxIndex);
+
+        // TODO: Optimize this
+        foreach (var choice in ConvertedChoices)
         {
             if (choice.Value.Contains(SearchString))
             {
-                if (height <= ListMaxIndex)
+                if (height < ListMaxIndex)
                 {
-                    Tui.UpdateLineRange(height++, choice.Value, posX);
+                    Tui.UpdateLine(height++, choice.Value, posX);
                 }
-                items.Add(choice);
+                SearchResultChoices.Add(choice);
             }
+
         }
-        return items;
     }
 
     public override T Show(string prompt)
     {
         object selected = new();
 
-        for (int i = 0; i < Choices.Count; ++i)
-        {
-            ConvertedChoice.Add(new(i, StringConverter(Choices[i])));
-        }
         Console.CursorVisible = false;
-        Tui.UpdateLineRange(Constants.PosYStartIndex, prompt, Constants.PosXStartIndex);
+        ConvertChoices();
         Draw();
-
-        var showedItems = UpdateSearch();
+        Tui.UpdateLine(
+                Constants.PosYStartIndex, prompt, Constants.PosXStartIndex);
 
         int bufferIndex = ListStartIndex;
         int index = 0;
@@ -142,22 +154,27 @@ public class SelectionPrompt<T> : Prompt<T>
             Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, '>');
 
             int minIndex = ListStartIndex;
-            int maxIndex = minIndex + showedItems.Count - 1;
-            bool higherOrEqualThanMin = bufferIndex > minIndex;
+            int maxIndex = minIndex + SearchResultChoices.Count - 1;
+            bool higherThanMin = bufferIndex > minIndex;
             bool lowerThanMax = bufferIndex < maxIndex;
 
             var key = Console.ReadKey(true);
 
             if (Keymap.Matches(SelectKey, key))
             {
+                if (SearchResultChoices.Count <= 0)
+                {
+                    continue;
+                }
+
                 loop = false;
-                selected = Choices[showedItems[index].Key];
+                selected = Choices[SearchResultChoices[index].Key];
                 continue;
             }
 
             if (Keymap.Matches(UpKey, key))
             {
-                if (higherOrEqualThanMin)
+                if (higherThanMin)
                 {
                     --index;
                     Tui.UpdateCell(bufferIndex--, Constants.PosXStartIndex, Constants.EmptyChar);
@@ -166,7 +183,7 @@ public class SelectionPrompt<T> : Prompt<T>
                 {
                     Tui.UpdateCell(minIndex, Constants.PosXStartIndex, Constants.EmptyChar);
                     bufferIndex = maxIndex;
-                    index = showedItems.Count - 1;
+                    index = SearchResultChoices.Count - 1;
                 }
                 continue;
             }
@@ -187,14 +204,14 @@ public class SelectionPrompt<T> : Prompt<T>
                 continue;
             }
 
-            if (Keymap.Matches(Search, key))
+            if (Keymap.Matches(SearchKey, key))
             {
                 Console.CursorVisible = true;
 
                 UpKey.SetDisabled(true);
                 DownKey.SetDisabled(true);
                 SelectKey.SetDisabled(true);
-                Search.SetDisabled(true);
+                SearchKey.SetDisabled(true);
                 StopSearch.SetDisabled(false);
                 DrawHelp();
 
@@ -202,7 +219,7 @@ public class SelectionPrompt<T> : Prompt<T>
                 bool search = true;
                 while (search)
                 {
-                    showedItems = UpdateSearch(showedItems.Count);
+                    Search();
                     Console.SetCursorPosition(searchWidth, SearchIndex);
 
                     var searchKey = Console.ReadKey(true);
@@ -224,12 +241,12 @@ public class SelectionPrompt<T> : Prompt<T>
                         UpKey.SetDisabled(false);
                         DownKey.SetDisabled(false);
                         SelectKey.SetDisabled(false);
-                        Search.SetDisabled(false);
+                        SearchKey.SetDisabled(false);
                         StopSearch.SetDisabled(true);
                         DrawHelp();
 
                         search = false;
-                        break;
+                        continue;
                     }
 
                     if (searchKey.Modifiers != ConsoleModifiers.Control)
@@ -244,10 +261,5 @@ public class SelectionPrompt<T> : Prompt<T>
         }
         Tui.Clear();
         return (T)selected;
-    }
-
-    public void HandleKey(ConsoleKeyInfo key)
-    {
-
     }
 }
