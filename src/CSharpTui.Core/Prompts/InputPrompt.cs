@@ -19,7 +19,7 @@ public class InputPrompt : Prompt<string>
         Draw();
     }
 
-    public InputPrompt(string title) : this(new Tui(title)) { }
+    public InputPrompt(string title) : this(new Tui()) { }
     public InputPrompt() : this(string.Empty) { }
 
     public void Draw()
@@ -39,7 +39,7 @@ public class InputPrompt : Prompt<string>
         int startIndex = Constants.PosXStartIndex;
         int endIndex = help.Length + startIndex;
 
-        Tui.UpdateRange(HelpHeight, Constants.PosXStartIndex, help);
+        Tui.UpdateLineRange(HelpHeight, help, Constants.PosXStartIndex);
     }
 
     public void InitializeKeymaps()
@@ -55,7 +55,7 @@ public class InputPrompt : Prompt<string>
         int posStartX = Constants.PosXStartIndex;
         int posEndX = posStartX + prompt.Length;
 
-        Tui.UpdateRange(PromptHeight, posStartX, prompt);
+        Tui.UpdateLineRange(PromptHeight, prompt, posStartX);
         int posX = posEndX + 1;
 
         Console.SetCursorPosition(posX, PromptHeight);
@@ -84,8 +84,9 @@ public class InputPrompt : Prompt<string>
             if (Keymap.Matches(ResetInput, key))
             {
                 posX = posEndX + 1;
-                Tui.UpdateRange(PromptHeight, posEndX + 1,
-                    new string(Constants.EmptyChar, answer.Length + 1));
+                Tui.UpdateLineRange(PromptHeight,
+                    new string(Constants.EmptyChar, answer.Length + 1),
+                    posEndX + 1);
                 answer = string.Empty;
 
                 continue;
@@ -106,7 +107,7 @@ public class InputPrompt : Prompt<string>
     public void DrawAnswer(string answer)
     {
         answer = "Your answer is: " + answer;
-        Tui.UpdateRange(2, Constants.PosXStartIndex, answer);
+        Tui.UpdateLineRange(2, answer, Constants.PosXStartIndex);
         Console.SetCursorPosition(0, Tui.Height);
     }
 }

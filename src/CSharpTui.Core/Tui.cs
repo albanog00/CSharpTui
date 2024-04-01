@@ -5,11 +5,9 @@ public class Tui
     private char[][] Buffer;
     public int Width;
     public int Height;
-    public string Title;
 
-    public Tui(string title, int width = 80, int height = 24)
+    public Tui(int width = 80, int height = 24)
     {
-        Title = title;
         Width = width;
         Height = height;
 
@@ -17,25 +15,14 @@ public class Tui
         for (int i = 0; i < Height; ++i)
         {
             Buffer[i] = new char[Width];
-            for (int j = 0; j < Width; ++j)
-            {
-                Buffer[i][j] = Constants.EmptyChar;
-            }
         }
     }
 
-    public Tui(string title)
-        : this(title, Console.WindowWidth, Console.WindowHeight - 1) { }
-
-    public Tui(int width, int height)
-        : this(string.Empty, width, height) { }
+    public Tui() : this(Console.WindowWidth, Console.WindowHeight - 1) { }
 
     public Tui Draw()
     {
         Console.Clear();
-        this.DrawBorders()
-            .DrawTitle();
-
         Console.SetCursorPosition(0, 0);
         for (int i = 0; i < Height; ++i)
         {
@@ -44,16 +31,30 @@ public class Tui
         return this;
     }
 
-    public Tui Reset()
+    public Tui DrawRange(int startHeight, int endHeight)
     {
-        for (int i = 0; i < Height; ++i)
+        Console.SetCursorPosition(0, startHeight);
+
+        for (int i = startHeight; i < endHeight; ++i)
+        {
+            for (int j = 0; j < Width; ++i)
+            {
+                Console.WriteLine(Buffer[i][j]);
+            }
+        }
+        return this;
+    }
+
+    public Tui ResetRange(int startHeight, int endHeight)
+    {
+        for (int i = startHeight; i < endHeight; ++i)
         {
             for (int j = 0; j < Width; ++j)
             {
                 Buffer[i][j] = Constants.EmptyChar;
             }
         }
-        return Draw();
+        return this.DrawRange(startHeight, endHeight);
     }
 
     public Tui Clear()
@@ -66,64 +67,6 @@ public class Tui
 
         Console.SetCursorPosition(0, 0);
         Console.Clear();
-        return this;
-    }
-
-    public Tui DrawBorders()
-    {
-        for (int i = 0; i < Width; ++i)
-        {
-            Buffer[0][i] = Constants.HorizontalChar;
-        }
-        for (int i = 0; i < Width; ++i)
-        {
-            Buffer[Height - 1][i] = Constants.HorizontalChar;
-        }
-        for (int i = 0; i < Height; ++i)
-        {
-            Buffer[i][0] = Constants.VerticalChar;
-        }
-        for (int i = 0; i < Height; ++i)
-        {
-            Buffer[i][Width - 1] = Constants.VerticalChar;
-        }
-
-        DrawCorners();
-        return this;
-    }
-
-    public Tui DrawCorners()
-    {
-        Buffer[0][0] = Constants.TopLeft;
-        Buffer[0][Width - 1] = Constants.TopRight;
-        Buffer[Height - 1][0] = Constants.BottomLeft;
-        Buffer[Height - 1][Width - 1] = Constants.BottomRight;
-        return this;
-    }
-
-    public Tui DrawTitle()
-    {
-        int middleTop = Width / 2;
-        int startIndex = middleTop - (Title.Length / 2);
-        int endIndex = startIndex + Title.Length;
-
-        for (int i = startIndex; i < endIndex; ++i)
-        {
-            Buffer[0][i] = Title[i - startIndex];
-        }
-        return this;
-    }
-
-    public Tui ResetTitle()
-    {
-        int middleTop = Width / 2;
-        int startIndex = middleTop - (Title.Length / 2);
-        int endIndex = startIndex + Title.Length;
-
-        for (int i = startIndex; i < endIndex; ++i)
-        {
-            Buffer[0][i] = Constants.HorizontalChar;
-        }
         return this;
     }
 
@@ -148,17 +91,22 @@ public class Tui
         return this;
     }
 
-    public Tui UpdateRange(int height, int x, char[] value)
+    public Tui UpdateLineRange(int height, char[] value, int padding = 0)
     {
-        for (int i = 0; i < value.Length && i <= Width; ++i)
+        for (int i = 0; i < padding; ++i)
         {
-            UpdateCell(height, x + i, value[i]);
+            UpdateCell(height, i, Constants.EmptyChar);
         }
-        return this;
+
+        for (int j = 0; j < value.Length && j <= Width; ++j)
+        {
+            UpdateCell(height, padding + j, value[j]);
+        }
+        return DrawLine(height);
     }
 
-    public Tui UpdateRange(int height, int x, string value) =>
-        UpdateRange(height, x, value.ToCharArray());
+    public Tui UpdateLineRange(int height, string value, int padding = 0) =>
+        UpdateLineRange(height, value.ToCharArray(), padding);
 
     public Tui UpdateLine(int height, char[] value)
     {

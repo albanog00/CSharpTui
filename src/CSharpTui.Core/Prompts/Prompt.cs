@@ -11,14 +11,4 @@ public abstract class Prompt<T> : IPrompt<T>
     }
 
     public abstract T Show(string prompt);
-
-    public Prompt<T> SetTitle(string title)
-    {
-        Tui.ResetTitle();
-
-        Tui.Title = title;
-        Tui.DrawTitle();
-        Tui.DrawLine(0);
-        return this;
-    }
 }

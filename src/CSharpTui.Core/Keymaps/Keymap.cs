@@ -6,6 +6,7 @@ public class Keymap
     private string Help { get; set; } = string.Empty;
     private bool Disabled { get; set; } = false;
     private bool IsControl { get; set; } = false;
+    private bool IsShift { get; set; } = false;
 
     public Keymap() : this([]) { }
 
@@ -35,6 +36,12 @@ public class Keymap
         return this;
     }
 
+    public Keymap SetIsShift(bool value)
+    {
+        IsShift = true;
+        return this;
+    }
+
     public static bool Matches(Keymap keymap, ConsoleKeyInfo key) =>
         !keymap.Disabled && keymap.Keys.Any(x => x == key.Key
             && key.Modifiers.HasFlag(ConsoleModifiers.Control) == keymap.IsControl);
@@ -46,8 +53,7 @@ public class Keymap
         {
             if (!string.IsNullOrEmpty(keymap.Help) && !keymap.Disabled)
             {
-                help += keymap.Help;
-                help += ' ';
+                help += keymap.Help + ' ';
             }
         }
         return help;

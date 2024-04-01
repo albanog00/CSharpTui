@@ -2,15 +2,8 @@ namespace CSharpTui.Core;
 
 public static class Constants
 {
-    public const char HorizontalChar = '─';
-    public const char VerticalChar = '│';
     public const char EmptyChar = ' ';
 
-    public const char TopLeft = '┌';
-    public const char TopRight = '┐';
-    public const char BottomLeft = '└';
-    public const char BottomRight = '┘';
-
-    public const int PosXStartIndex = 3;
-    public const int PosYStartIndex = 3;
+    public const int PosXStartIndex = 2;
+    public const int PosYStartIndex = 2;
 }

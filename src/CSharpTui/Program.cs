@@ -9,7 +9,10 @@
 var choices = new string[] {
     "A",
     "B",
-    "C"
+    "C",
+    "D",
+    "E",
+    "F"
 };
 
 Func<Func<int>> countFunction = () =>
@@ -23,7 +26,6 @@ var selectionPrompt = new SelectionPrompt<string>();
 var value = selectionPrompt
     .AddChoices(choices)
     .SetConverter(x => $"{displayChoiceNumber()}. {x.ToLower()}")
-    .SetTitle("Selection")
     .Show("Pick a choice");
 
 Console.WriteLine(value);
