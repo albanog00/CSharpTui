@@ -20,8 +20,8 @@ public class SelectionPrompt<T> : Prompt<T>
 
     private int HeaderIndex { get; set; }
     private int HelpIndex { get; set; }
-    private int ListStartIndex { get; set; }
-    private int ListMaxIndex { get; set; }
+    private int ChoicesListStartIndex { get; set; }
+    private int ChoicesListMaxIndex { get; set; }
     private int SearchIndex { get; set; }
     private int PerPage { get; set; } = 20;
 
@@ -29,13 +29,11 @@ public class SelectionPrompt<T> : Prompt<T>
     {
         HeaderIndex = Constants.PosYStartIndex;
 
-        ListStartIndex = HeaderIndex + 2;
-        ListMaxIndex = ListStartIndex + PerPage;
+        ChoicesListStartIndex = HeaderIndex + 2;
+        ChoicesListMaxIndex = ChoicesListStartIndex + PerPage;
 
-        HelpIndex = ListMaxIndex + 2;
+        HelpIndex = ChoicesListMaxIndex + 2;
         SearchIndex = HelpIndex + 2;
-
-        InitializeKeymaps();
     }
 
     public SelectionPrompt(string title) : this(new Tui()) { }
@@ -45,19 +43,22 @@ public class SelectionPrompt<T> : Prompt<T>
     {
         foreach (var choice in choices)
         {
-            AddChoice(choice);
+            this.AddChoice(choice);
         }
         return this;
     }
 
-    public void Draw()
+    private SelectionPrompt<T> Draw()
     {
         Tui.Draw();
-        Search();
-        DrawHelp();
+        return this
+            .InitializeKeymaps()
+            .DrawHelp()
+            .ConvertChoices()
+            .Search();
     }
 
-    public void DrawHelp()
+    private SelectionPrompt<T> DrawHelp()
     {
         string help = Keymap.GetHelpString([
                 SelectKey,
@@ -67,6 +68,7 @@ public class SelectionPrompt<T> : Prompt<T>
                 StopSearch,
         ]);
         Tui.UpdateLine(HelpIndex, help, Constants.PosXStartIndex);
+        return this;
     }
 
     public SelectionPrompt<T> AddChoice(T choice)
@@ -87,7 +89,7 @@ public class SelectionPrompt<T> : Prompt<T>
         return this;
     }
 
-    public void InitializeKeymaps()
+    private SelectionPrompt<T> InitializeKeymaps()
     {
         SelectKey = Keymap.Bind([ConsoleKey.Enter]).SetHelp("Enter", "Select");
         UpKey = Keymap.Bind([ConsoleKey.UpArrow, ConsoleKey.K]).SetHelp("Up/k", "Go up");
@@ -95,27 +97,31 @@ public class SelectionPrompt<T> : Prompt<T>
         SearchKey = Keymap.Bind([ConsoleKey.Q]).SetIsControl(true).SetHelp("Ctrl-q", "Start Search");
         StopSearch = Keymap.Bind([ConsoleKey.Escape]).SetHelp("Esc", "Stop Search").SetDisabled(true);
         Delete = Keymap.Bind([ConsoleKey.Backspace]);
+        return this;
     }
 
-    public void ConvertChoices()
+    // Cache the converter results
+    private SelectionPrompt<T> ConvertChoices()
     {
         for (int i = 0; i < Choices.Count; ++i)
         {
             var convertedString = StringConverter(Choices[i]);
-            if (i + ListStartIndex < ListMaxIndex)
+            if (i + ChoicesListStartIndex < ChoicesListMaxIndex)
             {
-                Tui.UpdateLine(i + ListStartIndex,
+                Tui.UpdateLine(i + ChoicesListStartIndex,
                         convertedString, Constants.PosXStartIndex + 2);
             }
             ConvertedChoices.Add(new(i, convertedString));
         }
+        return this;
     }
 
-    public void Search()
+    // Searchs through the cache
+    private SelectionPrompt<T> Search()
     {
         int currentSize = SearchResultChoices.Count;
-        int height = ListStartIndex;
-        int maxIndex = Math.Min(currentSize, ListMaxIndex) + height;
+        int height = ChoicesListStartIndex;
+        int maxIndex = Math.Min(currentSize, ChoicesListMaxIndex) + height;
         int posX = Constants.PosXStartIndex + 2;
 
         SearchResultChoices = [];
@@ -126,14 +132,14 @@ public class SelectionPrompt<T> : Prompt<T>
         {
             if (choice.Value.Contains(SearchString))
             {
-                if (height < ListMaxIndex)
+                if (height < ChoicesListMaxIndex)
                 {
                     Tui.UpdateLine(height++, choice.Value, posX);
                 }
                 SearchResultChoices.Add(choice);
             }
-
         }
+        return this;
     }
 
     public override T Show(string prompt)
@@ -141,19 +147,18 @@ public class SelectionPrompt<T> : Prompt<T>
         object selected = new();
 
         Console.CursorVisible = false;
-        ConvertChoices();
-        Draw();
+        this.Draw();
         Tui.UpdateLine(
                 Constants.PosYStartIndex, prompt, Constants.PosXStartIndex);
 
-        int bufferIndex = ListStartIndex;
+        int bufferIndex = ChoicesListStartIndex;
         int index = 0;
         bool loop = true;
         while (loop)
         {
             Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, '>');
 
-            int minIndex = ListStartIndex;
+            int minIndex = ChoicesListStartIndex;
             int maxIndex = minIndex + SearchResultChoices.Count - 1;
             bool higherThanMin = bufferIndex > minIndex;
             bool lowerThanMax = bufferIndex < maxIndex;
@@ -213,13 +218,13 @@ public class SelectionPrompt<T> : Prompt<T>
                 SelectKey.SetDisabled(true);
                 SearchKey.SetDisabled(true);
                 StopSearch.SetDisabled(false);
-                DrawHelp();
+                this.DrawHelp();
 
                 int searchWidth = SearchString.Length + 1;
                 bool search = true;
                 while (search)
                 {
-                    Search();
+                    this.Search();
                     Console.SetCursorPosition(searchWidth, SearchIndex);
 
                     var searchKey = Console.ReadKey(true);
@@ -243,7 +248,7 @@ public class SelectionPrompt<T> : Prompt<T>
                         SelectKey.SetDisabled(false);
                         SearchKey.SetDisabled(false);
                         StopSearch.SetDisabled(true);
-                        DrawHelp();
+                        this.DrawHelp();
 
                         search = false;
                         continue;
@@ -256,7 +261,7 @@ public class SelectionPrompt<T> : Prompt<T>
                     }
                 }
                 index = 0;
-                bufferIndex = ListStartIndex;
+                bufferIndex = ChoicesListStartIndex;
             }
         }
         Tui.Clear();
