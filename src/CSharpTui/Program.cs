@@ -26,6 +26,7 @@ var selectionPrompt = new SelectionPrompt<string>();
 var value = selectionPrompt
     .AddChoices(choices)
     .SetConverter(x => $"{displayChoiceNumber()}. {x.ToLower()}")
+    .SetItemsOnScreen(5)
     .Show("Pick a choice");
 
 Console.WriteLine(value);

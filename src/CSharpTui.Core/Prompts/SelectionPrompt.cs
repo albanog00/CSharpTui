@@ -24,7 +24,7 @@ public class SelectionPrompt<T> : Prompt<T>
     private int ChoicesLastIndex { get; set; }
     private int SearchInputIndex { get; set; }
     private int SearchResultIndex { get; set; } = 0;
-    private int ItemsOnScreen { get; set; } = 5;
+    private int ItemsOnScreen { get; set; } = 20;
 
     public SelectionPrompt(Tui tui) : base(tui)
     {
@@ -88,6 +88,18 @@ public class SelectionPrompt<T> : Prompt<T>
     public SelectionPrompt<T> SetSearchString(string search)
     {
         SearchString = search;
+        return this;
+    }
+
+    public SelectionPrompt<T> SetItemsOnScreen(int items)
+    {
+        if (items <= 0)
+        {
+            throw new ArgumentException("argument should be greater than 0");
+        }
+        ItemsOnScreen = items;
+        ChoicesLastIndex = ChoicesFirstIndex + ItemsOnScreen;
+
         return this;
     }
 
@@ -231,13 +243,15 @@ public class SelectionPrompt<T> : Prompt<T>
                 StopSearch.SetDisabled(false);
                 this.DrawHelp();
 
+                SearchResultIndex = 0;
                 int searchWidth = SearchString.Length + 1;
                 bool search = true;
 
                 Console.CursorVisible = true;
                 while (search)
                 {
-                    this.Search();
+                    this.Search()
+                        .RenderSearch();
                     Console.SetCursorPosition(searchWidth, SearchInputIndex);
 
                     var searchKey = Console.ReadKey(true);
@@ -271,9 +285,9 @@ public class SelectionPrompt<T> : Prompt<T>
                     {
                         SearchString += searchKey.KeyChar;
                         Tui.UpdateCell(SearchInputIndex, searchWidth++, searchKey.KeyChar);
+
                     }
                 }
-                SearchInputIndex = 0;
                 bufferIndex = ChoicesFirstIndex;
             }
         }
