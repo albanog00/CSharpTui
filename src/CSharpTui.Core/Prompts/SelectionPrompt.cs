@@ -250,9 +250,12 @@ public class SelectionPrompt<T> : Prompt<T>
                 Console.CursorVisible = true;
                 while (search)
                 {
+                    Console.CursorVisible = false;
                     this.Search()
                         .RenderSearch();
+
                     Console.SetCursorPosition(searchWidth, SearchInputIndex);
+                    Console.CursorVisible = true;
 
                     var searchKey = Console.ReadKey(true);
 
