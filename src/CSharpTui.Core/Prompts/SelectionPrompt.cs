@@ -9,7 +9,6 @@ public class SelectionPrompt<T> : Prompt<T>
     private Func<T, string> StringConverter { get; set; } = x => x.ToString()!;
     private IList<KeyValuePair<int, string>> ConvertedChoices = [];
     private IList<KeyValuePair<int, string>> SearchResultChoices = [];
-    private string SearchString { get; set; } = string.Empty;
 
     private Keymap SelectKey { get; set; } = new();
     private Keymap UpKey { get; set; } = new();
@@ -20,10 +19,17 @@ public class SelectionPrompt<T> : Prompt<T>
 
     private int HeaderIndex { get; set; }
     private int HelpIndex { get; set; }
+    private int CountIndex { get; set; }
     private int ChoicesFirstIndex { get; set; }
     private int ChoicesLastIndex { get; set; }
+    private int BufferIndex { get; set; }
     private int SearchInputIndex { get; set; }
+
+    private CancellationTokenSource CancellationTokenSearch { get; set; } = new();
+    private string SearchString { get; set; } = string.Empty;
+    private int LastSearchStringLength { get; set; } = 0;
     private int SearchResultIndex { get; set; } = 0;
+
     private int ItemsOnScreen { get; set; } = 20;
 
     public SelectionPrompt(Tui tui) : base(tui)
@@ -33,31 +39,30 @@ public class SelectionPrompt<T> : Prompt<T>
         ChoicesFirstIndex = HeaderIndex + 2;
         ChoicesLastIndex = ChoicesFirstIndex + ItemsOnScreen;
 
+        BufferIndex = ChoicesFirstIndex;
+
         HelpIndex = ChoicesLastIndex + 2;
+        CountIndex = HelpIndex - 1;
         SearchInputIndex = HelpIndex + 2;
+
+        InitializeKeymaps();
     }
 
-    public SelectionPrompt(string title) : this(new Tui()) { }
     public SelectionPrompt() : this(new Tui()) { }
-
-    public SelectionPrompt<T> AddChoices(IList<T> choices)
-    {
-        foreach (var choice in choices)
-        {
-            this.AddChoice(choice);
-        }
-        return this;
-    }
 
     private SelectionPrompt<T> Draw()
     {
         Tui.Draw();
-        return this
-            .InitializeKeymaps()
-            .DrawHelp()
-            .ConvertChoices()
-            .Search()
-            .RenderSearch();
+        this.DrawHelp().Search();
+        return this.RenderSearch();
+    }
+
+    private SelectionPrompt<T> DrawCount()
+    {
+        Tui.UpdateLine(CountIndex,
+                $"{SearchResultChoices.Count}/{ConvertedChoices.Count}",
+                Constants.PosXStartIndex);
+        return this;
     }
 
     private SelectionPrompt<T> DrawHelp()
@@ -73,11 +78,40 @@ public class SelectionPrompt<T> : Prompt<T>
         return this;
     }
 
-    public SelectionPrompt<T> AddChoice(T choice)
+    public SelectionPrompt<T> AddChoices(IList<T> choices)
     {
-        Choices.Add(choice);
+        foreach (var choice in choices)
+            this.AddChoice(choice);
+
+        if (SearchResultChoices.Count < ItemsOnScreen)
+            this.Search().RenderSearch();
+        else this.Search().DrawCount();
+
         return this;
     }
+
+    private SelectionPrompt<T> AddChoice(T choice, bool search = false)
+    {
+        int index;
+        lock (Choices)
+        {
+            Choices.Add(choice);
+            index = Choices.Count - 1;
+        }
+        AddConvertedChoice(choice, index);
+
+        if (search)
+        {
+            if (SearchResultChoices.Count < ItemsOnScreen)
+                this.Search().RenderSearch();
+            else this.Search().DrawCount();
+        }
+
+        return this;
+    }
+
+    public SelectionPrompt<T> AddChoice(T choice) =>
+        this.AddChoice(choice, false);
 
     public SelectionPrompt<T> SetConverter(Func<T, string> converter)
     {
@@ -94,12 +128,10 @@ public class SelectionPrompt<T> : Prompt<T>
     public SelectionPrompt<T> SetItemsOnScreen(int items)
     {
         if (items <= 0)
-        {
             throw new ArgumentException("argument should be greater than 0");
-        }
+
         ItemsOnScreen = items;
         ChoicesLastIndex = ChoicesFirstIndex + ItemsOnScreen;
-
         return this;
     }
 
@@ -114,80 +146,111 @@ public class SelectionPrompt<T> : Prompt<T>
         return this;
     }
 
-    // Cache the converter results
-    private SelectionPrompt<T> ConvertChoices()
+    private SelectionPrompt<T> KeymapsSearchToggle()
     {
-        for (int i = 0; i < Choices.Count; ++i)
-        {
-            var convertedString = StringConverter(Choices[i]);
-            if (i + ChoicesFirstIndex < ChoicesLastIndex)
-            {
-                Tui.UpdateLine(i + ChoicesFirstIndex,
-                        convertedString, Constants.PosXStartIndex + 2);
-            }
-            ConvertedChoices.Add(new(i, convertedString));
-        }
+        UpKey.SetDisabled(!UpKey.Disabled);
+        DownKey.SetDisabled(!DownKey.Disabled);
+        SelectKey.SetDisabled(!SelectKey.Disabled);
+        SearchKey.SetDisabled(!SearchKey.Disabled);
+        StopSearch.SetDisabled(!StopSearch.Disabled);
         return this;
     }
 
-    // Searchs through the cache
+    private SelectionPrompt<T> AddConvertedChoice(T choice, int count)
+    {
+        lock (ConvertedChoices)
+            ConvertedChoices.Add(new(count, StringConverter(choice)));
+        return this;
+    }
+
+    private SelectionPrompt<T> SearchAsync(
+        CancellationToken cancellationToken = default)
+    {
+        IList<KeyValuePair<int, string>> newSearchResult = [];
+
+        if (LastSearchStringLength > 0 &&
+            LastSearchStringLength < SearchString.Length)
+        {
+            // if `SearchString` gets appended a new character
+            // it searches in through cached results in `SearchResultChoices`.
+            foreach (var choice in SearchResultChoices)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    return this;
+                if (choice.Value.Contains(SearchString))
+                    newSearchResult.Add(choice);
+            }
+        }
+        else
+        {
+            // else if last character of search string is deleted 
+            // it searches in `ConvertedChoices`.
+            foreach (var choice in ConvertedChoices)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    return this;
+                if (choice.Value.Contains(SearchString))
+                    newSearchResult.Add(choice);
+            }
+        }
+
+        if (!cancellationToken.IsCancellationRequested)
+            lock (SearchResultChoices)
+                SearchResultChoices = newSearchResult;
+
+        return this;
+    }
+
     private SelectionPrompt<T> Search()
     {
-        int height = ChoicesFirstIndex;
-        int currentSize = SearchResultChoices.Count;
-        int maxIndex =
-            Math.Min(currentSize + height, ChoicesLastIndex);
+        if (!CancellationTokenSearch.IsCancellationRequested)
+            CancellationTokenSearch.Cancel();
 
-        SearchResultChoices = [];
-
-        // TODO: Optimize this
-        foreach (var choice in ConvertedChoices)
-        {
-            if (choice.Value.Contains(SearchString))
-            {
-                SearchResultChoices.Add(choice);
-            }
-        }
-        return this;
+        CancellationTokenSearch = new();
+        return Task.Run(() => this.SearchAsync(CancellationTokenSearch.Token)).Result;
     }
 
-    private SelectionPrompt<T> RenderSearch()
+    private SelectionPrompt<T> RenderSearch(int index = 0)
     {
         int posX = Constants.PosXStartIndex + 2;
-        int firstIndex = Math.Max(0, SearchResultIndex - ItemsOnScreen + 1);
         int height = ChoicesFirstIndex;
 
         Tui.ResetRange(height, ChoicesLastIndex);
 
-        for (int i = firstIndex; i < SearchResultChoices.Count && height < ChoicesLastIndex; ++i)
-        {
+        for (int i = index; i < SearchResultChoices.Count && height < ChoicesLastIndex; ++i)
             Tui.UpdateLine(height++, SearchResultChoices[i].Value, posX);
-        }
-
-        return this;
+        return this.DrawCount();
     }
+
+    private SelectionPrompt<T> RenderNext() =>
+        this.RenderSearch(Math.Max(0, SearchResultIndex + 1 - ItemsOnScreen));
+
+    private SelectionPrompt<T> RenderPrev() =>
+        this.RenderSearch(SearchResultIndex);
+
 
     public override T Show(string prompt)
     {
-        Console.CursorVisible = false;
-        int bufferIndex = ChoicesFirstIndex;
-
-        this.Draw();
         Tui.UpdateLine(Constants.PosYStartIndex, prompt, Constants.PosXStartIndex);
-        Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, '>');
+        return ShowAsync().GetAwaiter().GetResult();
+    }
 
+    public async Task<T> ShowAsync()
+    {
         object selected = new();
+
+        Console.CursorVisible = false;
+        await Task.Run(() => this.Draw());
+
         bool loop = true;
         while (loop)
         {
-            Tui.UpdateCell(bufferIndex, Constants.PosXStartIndex, '>');
+            Tui.UpdateCell(BufferIndex, Constants.PosXStartIndex, '>');
             var key = Console.ReadKey(true);
             if (Keymap.Matches(SelectKey, key))
             {
                 if (SearchResultChoices.Count <= 0)
-                {
                     continue;
-                }
 
                 selected = Choices[SearchResultChoices[SearchResultIndex].Key];
                 loop = false;
@@ -200,16 +263,10 @@ public class SelectionPrompt<T> : Prompt<T>
                 if (SearchResultIndex > 0)
                 {
                     --SearchResultIndex;
-
                     // Should not become less than first index
-                    if (bufferIndex > ChoicesFirstIndex)
-                    {
-                        Tui.UpdateCell(bufferIndex--, Constants.PosXStartIndex, Constants.EmptyChar);
-                    }
-                    else
-                    {
-                        this.RenderSearch();
-                    }
+                    if (BufferIndex > ChoicesFirstIndex)
+                        Tui.UpdateCell(BufferIndex--, Constants.PosXStartIndex, Constants.EmptyChar);
+                    else this.RenderPrev();
                 }
                 continue;
             }
@@ -220,44 +277,30 @@ public class SelectionPrompt<T> : Prompt<T>
                 if (SearchResultIndex + 1 < SearchResultChoices.Count)
                 {
                     ++SearchResultIndex;
-
                     // Should not become higher than last index
-                    if (bufferIndex + 1 < ChoicesLastIndex)
-                    {
-                        Tui.UpdateCell(bufferIndex++, Constants.PosXStartIndex, Constants.EmptyChar);
-                    }
-                    else
-                    {
-                        this.RenderSearch();
-                    }
+                    if (BufferIndex + 1 < ChoicesLastIndex)
+                        Tui.UpdateCell(BufferIndex++, Constants.PosXStartIndex, Constants.EmptyChar);
+                    else this.RenderNext();
                 }
                 continue;
             }
 
             if (Keymap.Matches(SearchKey, key))
             {
-                UpKey.SetDisabled(true);
-                DownKey.SetDisabled(true);
-                SelectKey.SetDisabled(true);
-                SearchKey.SetDisabled(true);
-                StopSearch.SetDisabled(false);
-                this.DrawHelp();
-
-                SearchResultIndex = 0;
+                Tui.UpdateCell(BufferIndex, Constants.PosXStartIndex, Constants.EmptyChar);
+                this.KeymapsSearchToggle().DrawHelp();
                 int searchWidth = SearchString.Length + 1;
                 bool search = true;
 
-                Console.CursorVisible = true;
                 while (search)
                 {
-                    Console.CursorVisible = false;
-                    this.Search()
-                        .RenderSearch();
+                    this.RenderSearch();
+                    LastSearchStringLength = SearchString.Length;
 
                     Console.SetCursorPosition(searchWidth, SearchInputIndex);
                     Console.CursorVisible = true;
-
                     var searchKey = Console.ReadKey(true);
+                    Console.CursorVisible = false;
 
                     if (Keymap.Matches(Delete, searchKey))
                     {
@@ -265,21 +308,14 @@ public class SelectionPrompt<T> : Prompt<T>
                         {
                             SearchString = SearchString[0..(SearchString.Length - 1)];
                             Tui.UpdateCell(SearchInputIndex, --searchWidth, Constants.EmptyChar);
+                            this.Search();
                         }
                         continue;
                     }
 
                     if (searchKey.Key == ConsoleKey.Escape)
                     {
-                        Console.CursorVisible = false;
-
-                        UpKey.SetDisabled(false);
-                        DownKey.SetDisabled(false);
-                        SelectKey.SetDisabled(false);
-                        SearchKey.SetDisabled(false);
-                        StopSearch.SetDisabled(true);
-                        this.DrawHelp();
-
+                        this.KeymapsSearchToggle().DrawHelp();
                         search = false;
                         continue;
                     }
@@ -288,13 +324,18 @@ public class SelectionPrompt<T> : Prompt<T>
                     {
                         SearchString += searchKey.KeyChar;
                         Tui.UpdateCell(SearchInputIndex, searchWidth++, searchKey.KeyChar);
-
+                        this.Search();
                     }
                 }
-                bufferIndex = ChoicesFirstIndex;
+                Tui.UpdateCell(BufferIndex, Constants.PosXStartIndex, Constants.EmptyChar);
+                BufferIndex = ChoicesFirstIndex;
+                SearchResultIndex = 0;
+                continue;
             }
         }
+
         Tui.Clear();
         return (T)selected;
     }
 }
+
