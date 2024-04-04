@@ -40,9 +40,12 @@ public class Tui
 
     public Tui Clear()
     {
-        Buffer = new char[Height][];
-        for (int i = 0; i < Height; ++i)
-            Buffer[i] = new char[Width];
+        lock (Buffer)
+        {
+            Buffer = new char[Height][];
+            for (int i = 0; i < Height; ++i)
+                Buffer[i] = new char[Width];
+        }
 
         Console.SetCursorPosition(0, 0);
         Console.Clear();
@@ -68,8 +71,11 @@ public class Tui
 
     public Tui UpdateCell(int height, int x, char value)
     {
-        Buffer[height][x] = value;
-        DrawCell(height, x);
+        lock (Buffer)
+        {
+            Buffer[height][x] = value;
+            DrawCell(height, x);
+        }
         return this;
     }
 
@@ -96,8 +102,11 @@ public class Tui
         for (int i = 0; i < value.Length; ++i)
             line[padding + i] = value[i];
 
-        Buffer[height] = line;
-        DrawLine(height);
+        lock (Buffer)
+        {
+            Buffer[height] = line;
+            DrawLine(height);
+        }
         return this;
     }
 

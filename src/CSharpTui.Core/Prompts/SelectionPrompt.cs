@@ -53,7 +53,8 @@ public class SelectionPrompt<T> : Prompt<T>
     private SelectionPrompt<T> Draw()
     {
         Tui.Draw();
-        return this.DrawHelp().Search().RenderSearch();
+        this.DrawHelp().Search();
+        return this.RenderSearch();
     }
 
     private SelectionPrompt<T> DrawCount()
@@ -152,7 +153,6 @@ public class SelectionPrompt<T> : Prompt<T>
         SelectKey.SetDisabled(!SelectKey.Disabled);
         SearchKey.SetDisabled(!SearchKey.Disabled);
         StopSearch.SetDisabled(!StopSearch.Disabled);
-
         return this;
     }
 
@@ -228,13 +228,19 @@ public class SelectionPrompt<T> : Prompt<T>
     private SelectionPrompt<T> RenderPrev() =>
         this.RenderSearch(SearchResultIndex);
 
+
     public override T Show(string prompt)
+    {
+        Tui.UpdateLine(Constants.PosYStartIndex, prompt, Constants.PosXStartIndex);
+        return ShowAsync().GetAwaiter().GetResult();
+    }
+
+    public async Task<T> ShowAsync()
     {
         object selected = new();
 
         Console.CursorVisible = false;
-        this.Draw();
-        Tui.UpdateLine(Constants.PosYStartIndex, prompt, Constants.PosXStartIndex);
+        await Task.Run(() => this.Draw());
 
         bool loop = true;
         while (loop)
