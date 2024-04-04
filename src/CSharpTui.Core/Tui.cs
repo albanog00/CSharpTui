@@ -13,9 +13,7 @@ public class Tui
 
         Buffer = new char[Height][];
         for (int i = 0; i < Height; ++i)
-        {
             Buffer[i] = new char[Width];
-        }
     }
 
     public Tui() : this(Console.WindowWidth, Console.WindowHeight - 1) { }
@@ -24,10 +22,9 @@ public class Tui
     {
         Console.Clear();
         Console.SetCursorPosition(0, 0);
+
         for (int i = 0; i < Height; ++i)
-        {
             Console.WriteLine(Buffer[i]);
-        }
         return this;
     }
 
@@ -45,9 +42,7 @@ public class Tui
     {
         Buffer = new char[Height][];
         for (int i = 0; i < Height; ++i)
-        {
             Buffer[i] = new char[Width];
-        }
 
         Console.SetCursorPosition(0, 0);
         Console.Clear();
@@ -81,14 +76,10 @@ public class Tui
     public Tui UpdateLineRange(int height, char[] value, int padding = 0)
     {
         for (int i = 0; i < padding; ++i)
-        {
             UpdateCell(height, i, Constants.EmptyChar);
-        }
 
         for (int j = 0; j < value.Length && j <= Width; ++j)
-        {
             UpdateCell(height, padding + j, value[j]);
-        }
         return DrawLine(height);
     }
 
@@ -100,13 +91,10 @@ public class Tui
         char[] line = new char[value.Length + padding];
 
         for (int i = 0; i < padding; ++i)
-        {
             line[i] = ' ';
-        }
+
         for (int i = 0; i < value.Length; ++i)
-        {
             line[padding + i] = value[i];
-        }
 
         Buffer[height] = line;
         DrawLine(height);
