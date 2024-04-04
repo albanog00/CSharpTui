@@ -4,7 +4,7 @@ public class Keymap
 {
     private ConsoleKey[] Keys { get; init; }
     private string Help { get; set; } = string.Empty;
-    public bool Disabled { get; set; } = false;
+    public bool Disabled { get; private set; } = false;
     private bool IsControl { get; set; } = false;
     private bool IsShift { get; set; } = false;
 
