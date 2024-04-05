@@ -30,10 +30,13 @@ public class Tui
 
     public Tui ResetRange(int startHeight, int endHeight)
     {
-        for (int i = startHeight; i < endHeight; ++i)
+        lock (Buffer)
         {
-            Buffer[i] = new char[Width];
-            DrawLine(i);
+            for (int i = startHeight; i < endHeight; ++i)
+            {
+                Buffer[i] = new char[Width];
+                DrawLine(i);
+            }
         }
         return this;
     }

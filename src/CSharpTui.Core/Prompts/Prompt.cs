@@ -1,7 +1,7 @@
 namespace CSharpTui.Core.Prompts;
 
 public abstract class Prompt<T> : IPrompt<T>
-    where T : notnull
+    where T : class
 {
     protected Tui Tui { get; set; }
 
@@ -10,5 +10,6 @@ public abstract class Prompt<T> : IPrompt<T>
         Tui = tui;
     }
 
-    public abstract T Show(string prompt);
+    public abstract T? Show(string prompt);
+    public abstract Task<T?> ShowAsync(string prompt, CancellationTokenSource tokenSource);
 }

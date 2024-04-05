@@ -44,18 +44,20 @@ public class Keymap
 
     public static bool Matches(Keymap keymap, ConsoleKeyInfo key) =>
         !keymap.Disabled && keymap.Keys.Any(x => x == key.Key
-            && key.Modifiers.HasFlag(ConsoleModifiers.Control) == keymap.IsControl);
+            && key.Modifiers.HasFlag(ConsoleModifiers.Control) == keymap.IsControl
+            && key.Modifiers.HasFlag(ConsoleModifiers.Shift) == keymap.IsShift);
+
+    public static bool Matches(Keymap[] keymaps, ConsoleKeyInfo key) =>
+        keymaps.Any(keymap => !keymap.Disabled && keymap.Keys.Any(x => x == key.Key
+            && key.Modifiers.HasFlag(ConsoleModifiers.Control) == keymap.IsControl
+            && key.Modifiers.HasFlag(ConsoleModifiers.Shift) == keymap.IsShift));
 
     public static string GetHelpString(IList<Keymap> keymaps)
     {
         string help = string.Empty;
         foreach (var keymap in keymaps)
-        {
             if (!string.IsNullOrEmpty(keymap.Help) && !keymap.Disabled)
-            {
                 help += keymap.Help + ' ';
-            }
-        }
         return help;
     }
 }

@@ -3,7 +3,7 @@ using CSharpTui.Core.Keymaps;
 namespace CSharpTui.Core.Prompts;
 
 public class SelectionPrompt<T> : Prompt<T>
-    where T : notnull
+    where T : class
 {
     private IList<T> Choices { get; set; } = [];
     private Func<T, string> StringConverter { get; set; } = x => x.ToString()!;
@@ -16,6 +16,7 @@ public class SelectionPrompt<T> : Prompt<T>
     private Keymap SearchKey { get; set; } = new();
     private Keymap StopSearch { get; set; } = new();
     private Keymap Delete { get; set; } = new();
+    private Keymap Exit { get; set; } = new();
 
     private int HeaderIndex { get; set; }
     private int HelpIndex { get; set; }
@@ -73,6 +74,7 @@ public class SelectionPrompt<T> : Prompt<T>
                 DownKey,
                 SearchKey,
                 StopSearch,
+                Exit
         ]);
         Tui.UpdateLine(HelpIndex, help, Constants.PosXStartIndex);
         return this;
@@ -142,6 +144,7 @@ public class SelectionPrompt<T> : Prompt<T>
         DownKey = Keymap.Bind([ConsoleKey.DownArrow, ConsoleKey.J]).SetHelp("Down/j", "Go down");
         SearchKey = Keymap.Bind([ConsoleKey.Q]).SetIsControl(true).SetHelp("Ctrl-q", "Start Search");
         StopSearch = Keymap.Bind([ConsoleKey.Escape]).SetHelp("Esc", "Stop Search").SetDisabled(true);
+        Exit = Keymap.Bind([ConsoleKey.Q]).SetIsShift(true).SetHelp("Q", "Exit");
         Delete = Keymap.Bind([ConsoleKey.Backspace]);
         return this;
     }
@@ -153,6 +156,7 @@ public class SelectionPrompt<T> : Prompt<T>
         SelectKey.SetDisabled(!SelectKey.Disabled);
         SearchKey.SetDisabled(!SearchKey.Disabled);
         StopSearch.SetDisabled(!StopSearch.Disabled);
+        Exit.SetDisabled(!Exit.Disabled);
         return this;
     }
 
@@ -176,7 +180,10 @@ public class SelectionPrompt<T> : Prompt<T>
             foreach (var choice in SearchResultChoices)
             {
                 if (cancellationToken.IsCancellationRequested)
+                {
+                    newSearchResult.Clear();
                     return this;
+                }
                 if (choice.Value.Contains(SearchString))
                     newSearchResult.Add(choice);
             }
@@ -188,7 +195,10 @@ public class SelectionPrompt<T> : Prompt<T>
             foreach (var choice in ConvertedChoices)
             {
                 if (cancellationToken.IsCancellationRequested)
+                {
+                    newSearchResult.Clear();
                     return this;
+                }
                 if (choice.Value.Contains(SearchString))
                     newSearchResult.Add(choice);
             }
@@ -198,6 +208,7 @@ public class SelectionPrompt<T> : Prompt<T>
             lock (SearchResultChoices)
                 SearchResultChoices = newSearchResult;
 
+        GC.Collect();
         return this;
     }
 
@@ -229,24 +240,29 @@ public class SelectionPrompt<T> : Prompt<T>
         this.RenderSearch(SearchResultIndex);
 
 
-    public override T Show(string prompt)
+    public override T? Show(string prompt)
     {
-        Tui.UpdateLine(Constants.PosYStartIndex, prompt, Constants.PosXStartIndex);
-        return ShowAsync().GetAwaiter().GetResult();
+        return ShowAsync(prompt, new()).GetAwaiter().GetResult();
     }
 
-    public async Task<T> ShowAsync()
+    public override async Task<T?> ShowAsync(string prompt, CancellationTokenSource tokenSource)
     {
-        object selected = new();
-
+        Tui.UpdateLine(Constants.PosYStartIndex, prompt, Constants.PosXStartIndex);
         Console.CursorVisible = false;
         await Task.Run(() => this.Draw());
 
+        object? selected = null;
         bool loop = true;
         while (loop)
         {
             Tui.UpdateCell(BufferIndex, Constants.PosXStartIndex, '>');
             var key = Console.ReadKey(true);
+            if (Keymap.Matches(Exit, key))
+            {
+                loop = false;
+                continue;
+            }
+
             if (Keymap.Matches(SelectKey, key))
             {
                 if (SearchResultChoices.Count <= 0)
@@ -333,9 +349,9 @@ public class SelectionPrompt<T> : Prompt<T>
                 continue;
             }
         }
-
+        tokenSource.Cancel();
         Tui.Clear();
-        return (T)selected;
+        return selected as T;
     }
 }
 
