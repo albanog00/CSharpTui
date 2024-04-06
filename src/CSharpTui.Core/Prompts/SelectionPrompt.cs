@@ -1,4 +1,5 @@
 using CSharpTui.Core.Keymaps;
+using System.Reflection.Metadata.Ecma335;
 
 namespace CSharpTui.Core.Prompts;
 
@@ -132,9 +133,18 @@ public class SelectionPrompt<T> : Prompt<T>
         if (items <= 0)
             throw new ArgumentException("argument should be greater than 0");
 
+        Tui.ResetRange(ChoicesFirstIndex, SearchInputIndex);
+
         ItemsOnScreen = items;
         ChoicesLastIndex = ChoicesFirstIndex + ItemsOnScreen;
-        return this;
+
+        BufferIndex = ChoicesFirstIndex;
+
+        HelpIndex = ChoicesLastIndex + 2;
+        CountIndex = HelpIndex - 1;
+        SearchInputIndex = HelpIndex + 2;
+
+        return this.Draw();
     }
 
     private SelectionPrompt<T> InitializeKeymaps()
@@ -182,7 +192,7 @@ public class SelectionPrompt<T> : Prompt<T>
                 if (cancellationToken.IsCancellationRequested)
                 {
                     newSearchResult.Clear();
-                    return this;
+                    break;
                 }
                 if (choice.Value.Contains(SearchString))
                     newSearchResult.Add(choice);
@@ -197,7 +207,7 @@ public class SelectionPrompt<T> : Prompt<T>
                 if (cancellationToken.IsCancellationRequested)
                 {
                     newSearchResult.Clear();
-                    return this;
+                    break;
                 }
                 if (choice.Value.Contains(SearchString))
                     newSearchResult.Add(choice);
@@ -208,7 +218,6 @@ public class SelectionPrompt<T> : Prompt<T>
             lock (SearchResultChoices)
                 SearchResultChoices = newSearchResult;
 
-        GC.Collect();
         return this;
     }
 
@@ -233,10 +242,10 @@ public class SelectionPrompt<T> : Prompt<T>
         return this.DrawCount();
     }
 
-    private SelectionPrompt<T> RenderNext() =>
+    private void RenderNext() =>
         this.RenderSearch(Math.Max(0, SearchResultIndex + 1 - ItemsOnScreen));
 
-    private SelectionPrompt<T> RenderPrev() =>
+    private void RenderPrev() =>
         this.RenderSearch(SearchResultIndex);
 
 
@@ -251,6 +260,16 @@ public class SelectionPrompt<T> : Prompt<T>
         Console.CursorVisible = false;
         await Task.Run(() => this.Draw());
 
+        var result = HandleInput();
+
+        tokenSource.Cancel();
+        Tui.Clear();
+
+        return result;
+    }
+
+    private T? HandleInput()
+    {
         object? selected = null;
         bool loop = true;
         while (loop)
@@ -275,83 +294,92 @@ public class SelectionPrompt<T> : Prompt<T>
 
             if (Keymap.Matches(UpKey, key))
             {
-                // Should not become negative
-                if (SearchResultIndex > 0)
-                {
-                    --SearchResultIndex;
-                    // Should not become less than first index
-                    if (BufferIndex > ChoicesFirstIndex)
-                        Tui.UpdateCell(BufferIndex--, Constants.PosXStartIndex, Constants.EmptyChar);
-                    else this.RenderPrev();
-                }
+                HandleUpKey();
                 continue;
             }
 
             if (Keymap.Matches(DownKey, key))
             {
-                // Should not become higher than count
-                if (SearchResultIndex + 1 < SearchResultChoices.Count)
-                {
-                    ++SearchResultIndex;
-                    // Should not become higher than last index
-                    if (BufferIndex + 1 < ChoicesLastIndex)
-                        Tui.UpdateCell(BufferIndex++, Constants.PosXStartIndex, Constants.EmptyChar);
-                    else this.RenderNext();
-                }
+                HandleDownKey();
                 continue;
             }
 
             if (Keymap.Matches(SearchKey, key))
             {
-                Tui.UpdateCell(BufferIndex, Constants.PosXStartIndex, Constants.EmptyChar);
-                this.KeymapsSearchToggle().DrawHelp();
-                int searchWidth = SearchString.Length + 1;
-                bool search = true;
-
-                while (search)
-                {
-                    this.RenderSearch();
-                    LastSearchStringLength = SearchString.Length;
-
-                    Console.SetCursorPosition(searchWidth, SearchInputIndex);
-                    Console.CursorVisible = true;
-                    var searchKey = Console.ReadKey(true);
-                    Console.CursorVisible = false;
-
-                    if (Keymap.Matches(Delete, searchKey))
-                    {
-                        if (searchWidth > 1 && SearchString.Length > 0)
-                        {
-                            SearchString = SearchString[0..(SearchString.Length - 1)];
-                            Tui.UpdateCell(SearchInputIndex, --searchWidth, Constants.EmptyChar);
-                            this.Search();
-                        }
-                        continue;
-                    }
-
-                    if (searchKey.Key == ConsoleKey.Escape)
-                    {
-                        this.KeymapsSearchToggle().DrawHelp();
-                        search = false;
-                        continue;
-                    }
-
-                    if (searchKey.Modifiers != ConsoleModifiers.Control)
-                    {
-                        SearchString += searchKey.KeyChar;
-                        Tui.UpdateCell(SearchInputIndex, searchWidth++, searchKey.KeyChar);
-                        this.Search();
-                    }
-                }
-                Tui.UpdateCell(BufferIndex, Constants.PosXStartIndex, Constants.EmptyChar);
-                BufferIndex = ChoicesFirstIndex;
-                SearchResultIndex = 0;
-                continue;
+                HandleSearch();
             }
         }
-        tokenSource.Cancel();
-        Tui.Clear();
         return selected as T;
     }
-}
 
+    private void HandleUpKey()
+    {
+        // Should not become negative
+        if (SearchResultIndex > 0)
+        {
+            --SearchResultIndex;
+            // Should not become less than first index
+            if (BufferIndex > ChoicesFirstIndex)
+                Tui.UpdateCell(BufferIndex--, Constants.PosXStartIndex, Constants.EmptyChar);
+            else RenderPrev();
+        }
+    }
+
+    private void HandleDownKey()
+    {
+        // Should not become higher than count
+        if (SearchResultIndex + 1 < SearchResultChoices.Count)
+        {
+            ++SearchResultIndex;
+            // Should not become higher than last index
+            if (BufferIndex + 1 < ChoicesLastIndex)
+                Tui.UpdateCell(BufferIndex++, Constants.PosXStartIndex, Constants.EmptyChar);
+            else RenderNext();
+        }
+    }
+
+    private void HandleSearch()
+    {
+        Tui.UpdateCell(BufferIndex, Constants.PosXStartIndex, Constants.EmptyChar);
+        this.KeymapsSearchToggle().DrawHelp();
+        int searchWidth = SearchString.Length + 1;
+        bool search = true;
+
+        while (search)
+        {
+            RenderSearch();
+            LastSearchStringLength = SearchString.Length;
+
+            Console.SetCursorPosition(searchWidth, SearchInputIndex);
+            var searchKey = Console.ReadKey(true);
+
+            if (Keymap.Matches(Delete, searchKey))
+            {
+                if (searchWidth > 1 && SearchString.Length > 0)
+                {
+                    SearchString = SearchString[0..(SearchString.Length - 1)];
+                    Tui.UpdateCell(SearchInputIndex, --searchWidth, Constants.EmptyChar);
+                    Search();
+                }
+                continue;
+            }
+
+            if (searchKey.Key == ConsoleKey.Escape)
+            {
+                KeymapsSearchToggle().DrawHelp();
+                search = false;
+                continue;
+            }
+
+            if (searchKey.Modifiers != ConsoleModifiers.Control)
+            {
+                SearchString += searchKey.KeyChar;
+                Tui.UpdateCell(SearchInputIndex, searchWidth++, searchKey.KeyChar);
+                Search();
+            }
+        }
+        Tui.UpdateCell(BufferIndex, Constants.PosXStartIndex, Constants.EmptyChar);
+        BufferIndex = ChoicesFirstIndex;
+        SearchResultIndex = 0;
+    }
+}
