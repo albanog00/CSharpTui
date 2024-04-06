@@ -187,31 +187,23 @@ public class SelectionPrompt<T> : Prompt<T>
         {
             // if `SearchString` gets appended a new character
             // it searches in through cached results in `SearchResultChoices`.
-            foreach (var choice in SearchResultChoices)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    newSearchResult.Clear();
-                    break;
-                }
-                if (choice.Value.Contains(SearchString))
-                    newSearchResult.Add(choice);
-            }
+            newSearchResult = SearchResultChoices
+                .AsParallel()
+                .Where(x => x.Value.Contains(
+                    SearchString, StringComparison.OrdinalIgnoreCase))
+                .Select(x => x)
+                .ToArray();
         }
         else
         {
             // else if last character of search string is deleted 
             // it searches in `ConvertedChoices`.
-            foreach (var choice in ConvertedChoices)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    newSearchResult.Clear();
-                    break;
-                }
-                if (choice.Value.Contains(SearchString))
-                    newSearchResult.Add(choice);
-            }
+            newSearchResult = ConvertedChoices
+                .AsParallel()
+                .Where(x => x.Value.Contains(
+                    SearchString, StringComparison.OrdinalIgnoreCase))
+                .Select(x => x)
+                .ToArray();
         }
 
         if (!cancellationToken.IsCancellationRequested)
@@ -227,7 +219,7 @@ public class SelectionPrompt<T> : Prompt<T>
             CancellationTokenSearch.Cancel();
 
         CancellationTokenSearch = new();
-        return Task.Run(() => this.SearchAsync(CancellationTokenSearch.Token)).Result;
+        return Task.Run(() => SearchAsync(CancellationTokenSearch.Token)).Result;
     }
 
     private SelectionPrompt<T> RenderSearch(int index = 0)
@@ -247,7 +239,6 @@ public class SelectionPrompt<T> : Prompt<T>
 
     private void RenderPrev() =>
         this.RenderSearch(SearchResultIndex);
-
 
     public override T? Show(string prompt)
     {
