@@ -227,7 +227,7 @@ public class SelectionPrompt<T> : Prompt<T>
         int posX = Constants.PosXStartIndex + 2;
         int height = ChoicesFirstIndex;
 
-        Tui.ResetRange(height, ChoicesLastIndex);
+        Tui.ResetRange(height, ChoicesLastIndex + 1);
 
         for (int i = index; i < SearchResultChoices.Count && height < ChoicesLastIndex; ++i)
             Tui.UpdateLine(height++, SearchResultChoices[i].Value, posX);

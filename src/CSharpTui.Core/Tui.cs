@@ -30,9 +30,12 @@ public class Tui
 
     public Tui ResetRange(int startHeight, int endHeight)
     {
+        if (startHeight < 0)
+            return this;
+
         lock (Buffer)
         {
-            for (int i = startHeight; i < endHeight; ++i)
+            for (int i = startHeight; i < endHeight && i < Height; ++i)
             {
                 Buffer[i] = new char[Width];
                 DrawLine(i);
@@ -57,6 +60,9 @@ public class Tui
 
     public Tui DrawLine(int line)
     {
+        if (line >= Height)
+            return this;
+
         Console.SetCursorPosition(0, line);
         Console.Write(new string(' ', Width));
 
@@ -67,6 +73,9 @@ public class Tui
 
     public Tui DrawCell(int height, int x)
     {
+        if (x >= Width || height >= Height)
+            return this;
+
         Console.SetCursorPosition(x, height);
         Console.Write(Buffer[height][x]);
         return this;
@@ -74,6 +83,9 @@ public class Tui
 
     public Tui UpdateCell(int height, int x, char value)
     {
+        if (x >= Width || height >= Height)
+            return this;
+
         lock (Buffer)
         {
             Buffer[height][x] = value;
@@ -84,10 +96,10 @@ public class Tui
 
     public Tui UpdateLineRange(int height, char[] value, int padding = 0)
     {
-        for (int i = 0; i < padding; ++i)
+        for (int i = 0; i < padding && i < Width; ++i)
             UpdateCell(height, i, Constants.EmptyChar);
 
-        for (int j = 0; j < value.Length && j <= Width; ++j)
+        for (int j = 0; j < value.Length && j < Width - padding; ++j)
             UpdateCell(height, padding + j, value[j]);
         return DrawLine(height);
     }
@@ -99,10 +111,10 @@ public class Tui
     {
         char[] line = new char[value.Length + padding];
 
-        for (int i = 0; i < padding; ++i)
-            line[i] = ' ';
+        for (int i = 0; i < padding && i < Width; ++i)
+            line[i] = Constants.EmptyChar;
 
-        for (int i = 0; i < value.Length; ++i)
+        for (int i = 0; i < value.Length && i < Width - padding; ++i)
             line[padding + i] = value[i];
 
         lock (Buffer)
