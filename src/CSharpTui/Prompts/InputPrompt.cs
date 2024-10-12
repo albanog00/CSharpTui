@@ -1,6 +1,7 @@
-using CSharpTui.Core.Keymaps;
+using CSharpTui.Keymaps;
+using CSharpTui.UI;
 
-namespace CSharpTui.Core.Prompts;
+namespace CSharpTui.Prompts;
 
 public class InputPrompt : Prompt<string>
 {
@@ -12,15 +13,16 @@ public class InputPrompt : Prompt<string>
     private Keymap ResetInput { get; set; } = new();
     private Keymap Exit { get; set; } = new();
 
-    public InputPrompt(Tui tui) : base(tui)
+    public InputPrompt(Tui tui)
+        : base(tui)
     {
-        PromptHeight = Tui.Height - 5;
-        HelpHeight = Tui.Height - 3;
+        PromptHeight = Tui.Rows - 5;
+        HelpHeight = Tui.Rows - 3;
         InitializeKeymaps();
     }
 
-    public InputPrompt(string title) : this(new Tui()) { }
-    public InputPrompt() : this(string.Empty) { }
+    public InputPrompt()
+        : this(new Tui()) { }
 
     public void Draw()
     {
@@ -30,11 +32,7 @@ public class InputPrompt : Prompt<string>
 
     public void DrawHelp()
     {
-        string help = Keymap.GetHelpString([
-                SendInput,
-                Delete,
-                ResetInput
-        ]);
+        string help = Keymap.GetHelpString([SendInput, Delete, ResetInput]);
 
         int startIndex = Constants.PosXStartIndex;
         int endIndex = help.Length + startIndex;
@@ -49,23 +47,20 @@ public class InputPrompt : Prompt<string>
         Exit = Keymap.Bind([ConsoleKey.Q]).SetIsShift(true).SetHelp("Q", "Exit");
     }
 
-    public override string? Show(string prompt)
-    {
-        return this.ShowAsync(prompt, new()).GetAwaiter().GetResult();
-    }
-
     public void DrawAnswer(string answer)
     {
         answer = "Your answer is: " + answer;
         Tui.UpdateLineRange(2, answer, Constants.PosXStartIndex);
-        Console.SetCursorPosition(0, Tui.Height);
+        Console.SetCursorPosition(0, Tui.Rows);
     }
 
-    public override async Task<string?> ShowAsync(string prompt, CancellationTokenSource tokenSource)
+    public override string? Show(string prompt)
     {
-        await Task.Run(() => this.Draw());
+        this.Draw();
 
-        string answer = string.Empty;
+        List<char> answer = [];
+        int ansPtr = 0;
+
         int posStartX = Constants.PosXStartIndex;
         int posEndX = posStartX + prompt.Length;
 
@@ -87,9 +82,9 @@ public class InputPrompt : Prompt<string>
 
             if (Keymap.Matches(Delete, key))
             {
-                if (posX > posEndX && answer.Length > 0)
+                if (posX > posEndX && answer.Count > 0)
                 {
-                    answer = answer[0..(answer.Length - 1)];
+                    --ansPtr;
                     Tui.UpdateCell(PromptHeight, --posX, Constants.EmptyChar);
                 }
                 continue;
@@ -98,23 +93,37 @@ public class InputPrompt : Prompt<string>
             if (Keymap.Matches(ResetInput, key))
             {
                 posX = posEndX + 1;
-                Tui.UpdateLineRange(PromptHeight,
-                    new string(Constants.EmptyChar, answer.Length + 1),
-                    posEndX + 1);
-                answer = string.Empty;
+
+                Tui.UpdateLineRange(
+                    PromptHeight,
+                    new string(Constants.EmptyChar, answer.Count + 1),
+                    posEndX + 1
+                );
+
+                answer.Clear();
 
                 continue;
             }
 
             if (key.Modifiers != ConsoleModifiers.Control)
             {
-                answer += key.KeyChar;
+                if (ansPtr < answer.Count)
+                {
+                    answer[ansPtr] = key.KeyChar;
+                }
+                else
+                {
+                    answer.Add(key.KeyChar);
+                }
+
+                ++ansPtr;
+
                 Tui.UpdateCell(PromptHeight, posX++, key.KeyChar);
             }
         }
-        tokenSource.Cancel();
+
         Tui.Clear();
 
-        return answer;
+        return string.Join(string.Empty, answer[..ansPtr]);
     }
 }

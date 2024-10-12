@@ -1,4 +1,4 @@
-namespace CSharpTui.Core;
+namespace CSharpTui;
 
 public static class Constants
 {
