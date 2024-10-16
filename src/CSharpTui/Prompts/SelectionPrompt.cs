@@ -86,20 +86,31 @@ public class SelectionPrompt<T> : Prompt<T>
 
     public SelectionPrompt<T> AddChoices(IList<T> choices)
     {
-        foreach (var choice in choices)
+        lock (Choices)
         {
-            int index;
-            lock (Choices)
+            foreach (var choice in choices)
             {
+                int index;
                 Choices.Add(choice);
                 index = Choices.Count - 1;
+
+                AddConvertedChoice(choice, index);
             }
-
-            AddConvertedChoice(choice, index);
         }
-
         Search();
+        return this;
+    }
 
+    public SelectionPrompt<T> AddChoice(T choice)
+    {
+        int index;
+        lock (Choices)
+        {
+            Choices.Add(choice);
+            index = Choices.Count - 1;
+        }
+        AddConvertedChoice(choice, index);
+        Search();
         return this;
     }
 
