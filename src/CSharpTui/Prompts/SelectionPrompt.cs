@@ -193,8 +193,7 @@ public class SelectionPrompt<T> : Prompt<T>
 
             if (fromSource || SearchResultChoices.Count - SearchResultIndex < ItemsOnScreen)
             {
-                if (StopSearch.Disabled) RenderSearch();
-                else RenderSearch(0);
+                RenderSearch(0);
             }
         }
 
